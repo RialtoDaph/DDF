@@ -58,7 +58,7 @@ export function TemplateItemRow({
               </Select>
             </div>
             <label className="flex items-center gap-2 text-sm text-parchment-dim self-end pb-2">
-              <input type="checkbox" name="requires_photo" defaultChecked={item.requires_photo} className="accent-brass" />
+              <input type="checkbox" name="requires_photo" defaultChecked={item.requires_photo} className="accent-wine" />
               Fotopflichtig
             </label>
           </div>
@@ -92,7 +92,7 @@ export function TemplateItemRow({
           onClick={() => startTransition(() => moveTemplateItem(templateId, index, "up"))}
           disabled={isFirst || pending}
           aria-label="Nach oben verschieben"
-          className="text-parchment-dim hover:text-brass disabled:opacity-30"
+          className="text-parchment-dim hover:text-wine disabled:opacity-30"
         >
           <ChevronUp size={16} />
         </button>
@@ -101,7 +101,7 @@ export function TemplateItemRow({
           onClick={() => startTransition(() => moveTemplateItem(templateId, index, "down"))}
           disabled={isLast || pending}
           aria-label="Nach unten verschieben"
-          className="text-parchment-dim hover:text-brass disabled:opacity-30"
+          className="text-parchment-dim hover:text-wine disabled:opacity-30"
         >
           <ChevronDown size={16} />
         </button>
@@ -109,7 +109,7 @@ export function TemplateItemRow({
           type="button"
           onClick={() => setEditing(true)}
           aria-label="Punkt bearbeiten"
-          className="text-parchment-dim hover:text-brass ml-1"
+          className="text-parchment-dim hover:text-wine ml-1"
         >
           <Pencil size={14} />
         </button>

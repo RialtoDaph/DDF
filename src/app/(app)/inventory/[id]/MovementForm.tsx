@@ -43,7 +43,7 @@ export function MovementForm({
           ))}
         </Select>
         {reason === "adjustment" && (
-          <p className="text-xs text-brass mt-1">Korrekturen erfordern Owner/Manager-Freigabe.</p>
+          <p className="text-xs text-wine mt-1">Korrekturen erfordern Owner/Manager-Freigabe.</p>
         )}
       </div>
       <div>

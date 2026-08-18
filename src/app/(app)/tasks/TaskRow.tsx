@@ -36,7 +36,7 @@ export function TaskRow({
         aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
         className={cn(
           "mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors",
-          done ? "bg-done border-done" : "border-ink-border hover:border-brass",
+          done ? "bg-done border-done" : "border-ink-border hover:border-wine",
         )}
       >
         {done && <span className="text-ink text-xs">✓</span>}
@@ -45,7 +45,7 @@ export function TaskRow({
         <p className={cn("text-sm", done ? "text-parchment-dim line-through" : "text-parchment")}>{task.title}</p>
         {task.description && <p className="text-xs text-parchment-dim mt-0.5">{task.description}</p>}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {task.assignee_name && <span className="text-xs text-brass-soft">{task.assignee_name}</span>}
+          {task.assignee_name && <span className="text-xs text-wine-soft">{task.assignee_name}</span>}
           {task.due_date && (
             <span className={cn("tabular text-xs", overdue ? "text-warn" : "text-parchment-dim")}>
               {task.due_date.split("-").reverse().join(".")}

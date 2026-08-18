@@ -37,7 +37,7 @@ export default async function MenuPage() {
           const marginPct = m.sale_price > 0 ? (margin / m.sale_price) * 100 : 0;
           return (
             <Link key={m.id} href={`/menu/${m.id}`}>
-              <Card className="hover:border-brass/50 transition-colors">
+              <Card className="hover:border-wine/50 transition-colors">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-parchment">{m.name}</span>
                   <span className="tabular text-sm text-parchment-dim">{m.sale_price.toFixed(2)} €</span>

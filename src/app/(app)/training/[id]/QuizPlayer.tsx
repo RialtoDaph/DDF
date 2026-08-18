@@ -72,7 +72,7 @@ export function QuizPlayer({ moduleId, questions }: { moduleId: string; question
                     value={opt}
                     checked={answers[q.id] === opt}
                     onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-                    className="accent-brass"
+                    className="accent-wine"
                   />
                   {opt}
                 </label>

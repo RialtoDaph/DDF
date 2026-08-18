@@ -59,7 +59,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-xs tracking-[0.3em] uppercase text-brass mb-1">
+        <p className="text-xs tracking-[0.3em] uppercase text-wine mb-1">
           {today.split("-").reverse().join(".")}
         </p>
         <h1 className="font-serif text-2xl md:text-3xl text-parchment">Willkommen, {profile.name.split(" ")[0]}</h1>
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link href="/inventory">
-          <Card className="hover:border-brass/50 transition-colors">
+          <Card className="hover:border-wine/50 transition-colors">
             <div className="flex items-center gap-3">
               <AlertTriangle size={20} className={criticalItems.length ? "text-warn" : "text-parchment-dim"} />
               <div>
@@ -78,9 +78,9 @@ export default async function DashboardPage() {
           </Card>
         </Link>
         <Link href="/tasks">
-          <Card className="hover:border-brass/50 transition-colors">
+          <Card className="hover:border-wine/50 transition-colors">
             <div className="flex items-center gap-3">
-              <ListChecks size={20} className="text-brass" />
+              <ListChecks size={20} className="text-wine" />
               <div>
                 <p className="tabular text-2xl text-parchment">{tasks?.length ?? 0}</p>
                 <p className="text-xs text-parchment-dim">{isStaff ? "Meine offenen Aufgaben" : "Offene Aufgaben"}</p>
@@ -91,14 +91,14 @@ export default async function DashboardPage() {
         <Card>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm">
-              <Sunrise size={16} className="text-brass" />
+              <Sunrise size={16} className="text-wine" />
               <span className="text-parchment-dim">Opening</span>
             </div>
             <ChecklistStatusBadge status={openingStatus} />
           </div>
           <div className="flex items-center justify-between gap-2 mt-2">
             <div className="flex items-center gap-2 text-sm">
-              <Moon size={16} className="text-brass" />
+              <Moon size={16} className="text-wine" />
               <span className="text-parchment-dim">Closing</span>
             </div>
             <ChecklistStatusBadge status={closingStatus} />
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
           title="Kritischer Bestand"
           subtitle="Artikel unter 50% des Sollbestands"
           right={
-            <Link href="/inventory" className="text-sm text-brass hover:underline">
+            <Link href="/inventory" className="text-sm text-wine hover:underline">
               Alle ansehen
             </Link>
           }

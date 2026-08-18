@@ -6,8 +6,8 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-md font-sans text-sm font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none px-4 py-2";
 
 const variants = {
-  primary: "bg-brass text-ink hover:bg-brass-soft",
-  secondary: "border border-ink-border text-parchment hover:border-brass hover:text-brass bg-transparent",
+  primary: "bg-wine-deep text-parchment hover:bg-wine-soft",
+  secondary: "border border-ink-border text-parchment hover:border-wine hover:text-wine bg-transparent",
   ghost: "text-parchment-dim hover:text-parchment hover:bg-ink-raised",
   danger: "border border-warn text-warn hover:bg-warn-soft",
 };

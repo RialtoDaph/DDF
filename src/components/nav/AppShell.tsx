@@ -9,6 +9,7 @@ import { navForRole, type NavItem } from "@/lib/nav";
 import type { Notification } from "@/lib/notifications";
 import type { UserRole } from "@/lib/database.types";
 import { signOut } from "@/app/auth/actions";
+import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -47,7 +48,10 @@ export function AppShell({
           >
             <Menu size={22} />
           </button>
-          <span className="font-serif text-lg text-brass">Der Dicke Franz</span>
+          <span className="flex items-center gap-2">
+            <LogoMark className="h-6 w-auto" />
+            <span className="font-serif text-lg text-parchment">Der Dicke Franz</span>
+          </span>
           <NotificationBell notifications={notifications} />
         </header>
 
@@ -55,7 +59,10 @@ export function AppShell({
           <div className="md:hidden fixed inset-0 z-50 flex">
             <div className="w-72 bg-ink-raised border-r border-ink-border flex flex-col">
               <div className="flex items-center justify-between px-4 h-14 border-b border-ink-border">
-                <span className="font-serif text-lg text-brass">Der Dicke Franz</span>
+                <span className="flex items-center gap-2">
+                  <LogoMark className="h-6 w-auto" />
+                  <span className="font-serif text-lg text-parchment">Der Dicke Franz</span>
+                </span>
                 <button onClick={() => setOpen(false)} aria-label="Menue schliessen" className="p-2 text-parchment">
                   <X size={20} />
                 </button>
@@ -94,9 +101,9 @@ function SidebarContent({
 }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="hidden md:block px-5 py-5 border-b border-ink-border">
-        <p className="text-[0.65rem] tracking-[0.3em] uppercase text-brass mb-1">Der Dicke Franz</p>
-        <p className="font-serif text-xl text-parchment leading-tight">System</p>
+      <div className="hidden md:flex flex-col items-center px-5 py-5 border-b border-ink-border">
+        <Logo className="w-28 h-auto" />
+        <p className="text-[0.6rem] tracking-[0.25em] uppercase text-parchment-dim mt-3">Bar-Management</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
@@ -111,7 +118,7 @@ function SidebarContent({
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
                 active
-                  ? "bg-brass/15 text-brass border border-brass/30"
+                  ? "bg-wine/15 text-wine border border-wine/30"
                   : "text-parchment-dim hover:text-parchment hover:bg-ink-card border border-transparent",
               )}
             >

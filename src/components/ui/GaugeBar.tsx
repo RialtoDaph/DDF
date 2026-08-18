@@ -32,7 +32,7 @@ export function GaugeBar({
         <div
           className={cn(
             "h-full rounded-full transition-[width]",
-            critical ? "bg-warn" : low ? "bg-brass" : "bg-done",
+            critical ? "bg-warn" : low ? "bg-wine" : "bg-done",
           )}
           style={{ width: `${pct}%` }}
         />

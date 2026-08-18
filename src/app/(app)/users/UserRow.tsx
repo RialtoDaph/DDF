@@ -70,7 +70,7 @@ export function UserRow({
         </>
       ) : (
         <label className="flex items-center gap-2 text-xs text-parchment-dim">
-          <input type="checkbox" name="is_active" defaultChecked={user.is_active} className="accent-brass" />
+          <input type="checkbox" name="is_active" defaultChecked={user.is_active} className="accent-wine" />
           Aktiv
         </label>
       )}

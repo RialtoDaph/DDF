@@ -64,7 +64,7 @@ export function EditItemForm({
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-parchment-dim">
-        <input type="checkbox" name="is_perishable" defaultChecked={item.is_perishable} className="accent-brass" />
+        <input type="checkbox" name="is_perishable" defaultChecked={item.is_perishable} className="accent-wine" />
         Verderblich
       </label>
       {state?.error && <p className="text-sm text-warn">{state.error}</p>}

@@ -61,8 +61,8 @@ export default async function InventoryPage({
               className={cn(
                 "shrink-0 rounded-full px-3.5 py-1.5 text-sm border transition-colors",
                 active
-                  ? "bg-brass text-ink border-brass"
-                  : "border-ink-border text-parchment-dim hover:text-parchment hover:border-brass/50",
+                  ? "bg-wine text-ink border-wine"
+                  : "border-ink-border text-parchment-dim hover:text-parchment hover:border-wine/50",
               )}
             >
               {c.label}
@@ -74,7 +74,7 @@ export default async function InventoryPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(items ?? []).map((item) => (
           <Link key={item.id} href={`/inventory/${item.id}`}>
-            <Card className="hover:border-brass/50 transition-colors">
+            <Card className="hover:border-wine/50 transition-colors">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-parchment">{item.name}</span>
                 <span className="text-xs uppercase tracking-wide text-parchment-dim">

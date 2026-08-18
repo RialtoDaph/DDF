@@ -60,7 +60,7 @@ export function ItemRow({
   }
 
   return (
-    <li className={cn("py-3", item.requires_photo && "border-l-2 pl-3 -ml-3 border-brass/30")}>
+    <li className={cn("py-3", item.requires_photo && "border-l-2 pl-3 -ml-3 border-wine/30")}>
       <div className="flex items-start gap-3">
         <button
           type="button"
@@ -78,7 +78,7 @@ export function ItemRow({
         <div className="flex-1 min-w-0">
           <p className={cn("text-sm", satisfied ? "text-parchment-dim line-through" : "text-parchment")}>
             {item.text}
-            {item.requires_photo && <span className="text-brass ml-1">📷</span>}
+            {item.requires_photo && <span className="text-wine ml-1">📷</span>}
           </p>
           {item.requires_photo && !readOnly && (
             <div className="mt-2 max-w-xs">

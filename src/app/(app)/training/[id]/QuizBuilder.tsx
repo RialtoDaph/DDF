@@ -31,7 +31,7 @@ export function QuizBuilder({ moduleId, questions }: { moduleId: string; questio
                 <div>
                   <p className="text-sm text-parchment">{q.question}</p>
                   <p className="text-xs text-parchment-dim mt-0.5">
-                    Richtige Antwort: <span className="text-brass-soft">{q.correct_answer}</span>
+                    Richtige Antwort: <span className="text-wine-soft">{q.correct_answer}</span>
                     {q.options && q.options.length > 0 ? ` · Optionen: ${q.options.join(", ")}` : ""}
                   </p>
                 </div>

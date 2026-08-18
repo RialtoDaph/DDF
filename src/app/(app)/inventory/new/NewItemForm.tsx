@@ -48,7 +48,7 @@ export function NewItemForm() {
         <Input id="purchase_price" name="purchase_price" type="number" step="0.01" min="0" />
       </div>
       <label className="flex items-center gap-2 text-sm text-parchment-dim">
-        <input type="checkbox" name="is_perishable" className="accent-brass" />
+        <input type="checkbox" name="is_perishable" className="accent-wine" />
         Verderblich (Ablauf-Tracking)
       </label>
       {state?.error && <p className="text-sm text-warn">{state.error}</p>}

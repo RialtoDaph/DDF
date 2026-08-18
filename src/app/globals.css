@@ -1,19 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  /* Ledger / Ink palette */
-  --color-ink: #14110e;
-  --color-ink-raised: #1c1710;
-  --color-ink-card: #201a12;
-  --color-ink-border: #3a3122;
-  --color-brass: #c9a15c;
-  --color-brass-soft: #a9895a;
-  --color-parchment: #ede3d0;
-  --color-parchment-dim: #b8ac93;
+  /* Bar Der Dicke Franz — the logo's three colours: near-black silhouette,
+     oxblood lettering, warm paper white. */
+  --color-ink: #120d0d;
+  --color-ink-raised: #1a1313;
+  --color-ink-card: #1f1717;
+  --color-ink-border: #3a2926;
+  /* #6c0808 is the logo's own red; it disappears against a dark background,
+     so the accent is that hue lifted until it reads, with the original kept
+     for fills that carry parchment text on top. */
+  --color-wine: #c9564a;
+  --color-wine-soft: #9c3a31;
+  --color-wine-deep: #6c0808;
+  --color-parchment: #f0e7dd;
+  --color-parchment-dim: #b5a79f;
   --color-done: #6f8f6a;
-  --color-done-soft: #2a3327;
-  --color-warn: #b1543a;
-  --color-warn-soft: #372420;
+  --color-done-soft: #26301f;
+  /* Amber, not another red — warnings have to stay distinct from the brand. */
+  --color-warn: #d98e3d;
+  --color-warn-soft: #38271a;
 
   --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -25,8 +31,9 @@
   --color-ink-raised: var(--color-ink-raised);
   --color-ink-card: var(--color-ink-card);
   --color-ink-border: var(--color-ink-border);
-  --color-brass: var(--color-brass);
-  --color-brass-soft: var(--color-brass-soft);
+  --color-wine: var(--color-wine);
+  --color-wine-soft: var(--color-wine-soft);
+  --color-wine-deep: var(--color-wine-deep);
   --color-parchment: var(--color-parchment);
   --color-parchment-dim: var(--color-parchment-dim);
   --color-done: var(--color-done);
@@ -48,7 +55,7 @@ body {
   color: var(--color-parchment);
   font-family: var(--font-sans);
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201, 161, 92, 0.06), transparent),
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201, 86, 74, 0.07), transparent),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.06) 0px, rgba(0, 0, 0, 0.06) 1px, transparent 1px, transparent 3px);
 }
 
@@ -57,7 +64,7 @@ body {
 }
 
 ::selection {
-  background: var(--color-brass);
+  background: var(--color-wine);
   color: var(--color-ink);
 }
 

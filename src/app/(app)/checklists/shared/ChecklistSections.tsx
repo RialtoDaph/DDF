@@ -51,7 +51,7 @@ export function ChecklistSections({
           <div className="space-y-5">
             {roundCheck.map((group) => (
               <div key={group.category}>
-                <p className="text-xs uppercase tracking-wide text-brass-soft mb-1">
+                <p className="text-xs uppercase tracking-wide text-wine-soft mb-1">
                   {ROUND_CHECK_LABEL[group.category] ?? group.category}
                 </p>
                 <ul className="divide-y divide-ink-border">

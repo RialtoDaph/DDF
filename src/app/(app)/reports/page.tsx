@@ -133,7 +133,7 @@ export default async function ReportsPage() {
               const margin = m.sale_price - cost;
               return (
                 <li key={m.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/menu/${m.id}`} className="text-parchment hover:text-brass">
+                  <Link href={`/menu/${m.id}`} className="text-parchment hover:text-wine">
                     {m.name}
                   </Link>
                   <span className={`tabular text-xs ${margin >= 0 ? "text-done" : "text-warn"}`}>
@@ -186,7 +186,7 @@ export default async function ReportsPage() {
           <ul className="divide-y divide-ink-border">
             {closings.map((c) => (
               <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                <Link href={`/reports/closing/${c.id}`} className="text-parchment hover:text-brass">
+                <Link href={`/reports/closing/${c.id}`} className="text-parchment hover:text-wine">
                   {formatDate(c.date)} — {(c.users as unknown as { name: string } | null)?.name}
                 </Link>
                 {c.status === "approved" ? <StampBadge>Freigegeben</StampBadge> : <StampBadge variant="warn">Eingereicht</StampBadge>}

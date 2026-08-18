@@ -37,7 +37,7 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
           name="video"
           type="file"
           accept="video/*"
-          className="block w-full text-sm text-parchment-dim file:mr-3 file:rounded-md file:border-0 file:bg-brass file:px-3 file:py-2 file:text-ink file:text-sm"
+          className="block w-full text-sm text-parchment-dim file:mr-3 file:rounded-md file:border-0 file:bg-wine file:px-3 file:py-2 file:text-ink file:text-sm"
         />
       </div>
       {state?.error && <p className="text-sm text-warn">{state.error}</p>}

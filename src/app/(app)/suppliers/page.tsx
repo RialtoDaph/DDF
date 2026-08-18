@@ -22,7 +22,7 @@ export default async function SuppliersPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(suppliers ?? []).map((s) => (
           <Link key={s.id} href={`/suppliers/${s.id}`}>
-            <Card className="hover:border-brass/50 transition-colors">
+            <Card className="hover:border-wine/50 transition-colors">
               <p className="text-parchment">{s.name}</p>
               <p className="text-xs text-parchment-dim mt-1">
                 {s.category ?? "—"}

@@ -56,7 +56,7 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
         <div>
           <h1 className="font-serif text-2xl md:text-3xl text-parchment">{moduleData.title}</h1>
           {moduleData.menu_items && (
-            <p className="text-xs text-brass-soft mt-1">{(moduleData.menu_items as unknown as { name: string }).name}</p>
+            <p className="text-xs text-wine-soft mt-1">{(moduleData.menu_items as unknown as { name: string }).name}</p>
           )}
         </div>
         {myProgress?.status === "passed" && <StampBadge>Bestanden</StampBadge>}

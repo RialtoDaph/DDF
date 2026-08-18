@@ -22,7 +22,7 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
           <span
             className={cn(
               "absolute -top-0.5 -right-0.5 min-w-4 h-4 rounded-full text-[0.6rem] flex items-center justify-center px-1",
-              warnCount > 0 ? "bg-warn text-parchment" : "bg-brass text-ink",
+              warnCount > 0 ? "bg-warn text-parchment" : "bg-wine text-ink",
             )}
           >
             {notifications.length}
@@ -45,7 +45,7 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
                       onClick={() => setOpen(false)}
                       className="flex items-start gap-2 px-2 py-2.5 text-sm hover:bg-ink-raised rounded-md"
                     >
-                      <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", n.severity === "warn" ? "bg-warn" : "bg-brass")} />
+                      <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", n.severity === "warn" ? "bg-warn" : "bg-wine")} />
                       <span className="text-parchment-dim">{n.message}</span>
                     </Link>
                   </li>

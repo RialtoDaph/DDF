@@ -56,7 +56,7 @@ export function TemplateEditor({
             </Select>
           </div>
           <label className="flex items-center gap-2 text-sm text-parchment-dim self-end pb-2">
-            <input type="checkbox" name="requires_photo" className="accent-brass" />
+            <input type="checkbox" name="requires_photo" className="accent-wine" />
             Fotopflichtig
           </label>
         </div>

@@ -32,13 +32,13 @@ export default async function TrainingPage() {
           const p = progressByModule.get(m.id);
           return (
             <Link key={m.id} href={`/training/${m.id}`}>
-              <Card className="hover:border-brass/50 transition-colors">
+              <Card className="hover:border-wine/50 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <span className="text-parchment">{m.title}</span>
                   {p?.status === "passed" && <StampBadge>Bestanden</StampBadge>}
                 </div>
                 {m.menu_items && (
-                  <p className="text-xs text-brass-soft">{(m.menu_items as unknown as { name: string }).name}</p>
+                  <p className="text-xs text-wine-soft">{(m.menu_items as unknown as { name: string }).name}</p>
                 )}
                 {m.description && <p className="text-xs text-parchment-dim mt-1 line-clamp-2">{m.description}</p>}
                 {p && p.status !== "passed" && (
