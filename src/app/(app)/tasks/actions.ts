@@ -35,18 +35,24 @@ export async function createTask(_prevState: unknown, formData: FormData) {
 }
 
 export async function setTaskStatus(taskId: string, status: TaskStatus) {
+  await requireProfile();
   const supabase = await createClient();
 
   const { data: task } = await supabase
     .from("tasks")
-    .select("id, title, description, assigned_to, recurrence, due_date, outlet_id, created_by")
+    .select("id, title, description, assigned_to, recurrence, due_date, outlet_id, created_by, status")
     .eq("id", taskId)
     .single();
 
   const { error } = await supabase.from("tasks").update({ status }).eq("id", taskId);
   if (error) throw new Error(error.message);
 
-  if (status === "done" && task && task.recurrence !== "none") {
+  // Only spawn the next occurrence on a real open -> done transition. The row
+  // is a toggle in the UI, so re-checking an already-done task would otherwise
+  // queue up a duplicate follow-up on every click.
+  const justCompleted = status === "done" && task?.status !== "done";
+
+  if (justCompleted && task && task.recurrence !== "none") {
     const base = task.due_date ? new Date(task.due_date) : new Date();
     const next = new Date(base);
     next.setDate(next.getDate() + (task.recurrence === "daily" ? 1 : 7));

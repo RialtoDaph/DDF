@@ -32,13 +32,15 @@ export function UserRow({
         <p className="text-xs text-parchment-dim">{user.email}</p>
       </div>
 
-      {canEditRole ? (
-        <Select name="role" defaultValue={user.role} className="w-36" disabled={isSelf}>
+      {canEditRole && !isSelf ? (
+        <Select name="role" defaultValue={user.role} className="w-36">
           <option value="owner">Owner</option>
           <option value="manager">Manager</option>
           <option value="staff">Mitarbeiter</option>
         </Select>
       ) : (
+        // Own role is never editable here — demoting yourself would lock you
+        // out of this page. Submit it unchanged so the update keeps it.
         <>
           <span className="text-xs uppercase tracking-wide text-parchment-dim w-36">{ROLE_LABEL[user.role]}</span>
           <input type="hidden" name="role" value={user.role} />
@@ -58,12 +60,22 @@ export function UserRow({
         <input type="hidden" name="outlet_id" value={user.outlet_id ?? ""} />
       )}
 
-      <label className="flex items-center gap-2 text-xs text-parchment-dim">
-        <input type="checkbox" name="is_active" defaultChecked={user.is_active} className="accent-brass" disabled={isSelf} />
-        Aktiv
-      </label>
+      {isSelf ? (
+        // Same reasoning as the role field: you can't deactivate yourself. A
+        // disabled checkbox submits nothing, which would read back as "off",
+        // so the current value goes along as a hidden field instead.
+        <>
+          <span className="text-xs text-parchment-dim">Aktiv</span>
+          <input type="hidden" name="is_active" value={user.is_active ? "on" : ""} />
+        </>
+      ) : (
+        <label className="flex items-center gap-2 text-xs text-parchment-dim">
+          <input type="checkbox" name="is_active" defaultChecked={user.is_active} className="accent-brass" />
+          Aktiv
+        </label>
+      )}
 
-      <Button type="submit" variant="ghost" disabled={pending || isSelf} className="text-xs">
+      <Button type="submit" variant="ghost" disabled={pending} className="text-xs">
         {pending ? "…" : "Speichern"}
       </Button>
       {state?.error && <p className="text-xs text-warn w-full">{state.error}</p>}

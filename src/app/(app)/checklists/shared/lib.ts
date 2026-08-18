@@ -52,15 +52,23 @@ export async function getOrCreateSubmission(
 ) {
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: existing } = await supabase
-    .from("checklist_submissions")
-    .select("*")
-    .eq("template_id", templateId)
-    .eq("user_id", userId)
-    .eq("date", today)
-    .maybeSingle();
+  // limit(1) rather than maybeSingle(): this runs during page render, so two
+  // near-simultaneous requests (a second tab, a refresh mid-flight) can both
+  // miss the read and insert. The unique index added in migration 0006 makes
+  // the loser fail with 23505, which we resolve by re-reading below — but rows
+  // created before that index existed must not 500 the page either.
+  const readExisting = () =>
+    supabase
+      .from("checklist_submissions")
+      .select("*")
+      .eq("template_id", templateId)
+      .eq("user_id", userId)
+      .eq("date", today)
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-  if (existing) return existing;
+  const { data: existing } = await readExisting();
+  if (existing && existing.length > 0) return existing[0];
 
   const { data: created, error } = await supabase
     .from("checklist_submissions")
@@ -68,8 +76,13 @@ export async function getOrCreateSubmission(
     .select("*")
     .single();
 
-  if (error) throw new Error(error.message);
-  return created;
+  if (created) return created;
+
+  // Lost the insert race — the row the other request created is the one to use.
+  const { data: raced } = await readExisting();
+  if (raced && raced.length > 0) return raced[0];
+
+  throw new Error(error?.message ?? "Checklisten-Eintrag konnte nicht angelegt werden.");
 }
 
 export async function signedPhotoUrl(supabase: SupabaseClient<Database>, path: string) {

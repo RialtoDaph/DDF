@@ -13,9 +13,20 @@ export async function updateUserProfile(_prevState: unknown, formData: FormData)
   }
 
   const id = String(formData.get("id") ?? "");
-  const role = formData.get("role") as UserRole;
+  const role = String(formData.get("role") ?? "") as UserRole;
   const outlet_id = String(formData.get("outlet_id") ?? "") || null;
   const is_active = formData.get("is_active") === "on";
+
+  if (!["owner", "manager", "staff"].includes(role)) {
+    return { error: "Ungueltige Rolle." };
+  }
+
+  // Editing your own row is allowed (assigning yourself a Standort), but role
+  // and active status stay as they are — a self-demotion or self-deactivation
+  // would lock the last owner out of this page.
+  if (id === profile.id && (role !== profile.role || !is_active)) {
+    return { error: "Eigene Rolle und Aktiv-Status koennen hier nicht geaendert werden." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("users").update({ role, outlet_id, is_active }).eq("id", id);

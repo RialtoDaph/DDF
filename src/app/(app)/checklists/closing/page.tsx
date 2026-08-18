@@ -17,12 +17,15 @@ export default async function ClosingChecklistPage() {
   }
 
   const supabase = await createClient();
-  const { data: template } = await supabase
+  const { data: templates } = await supabase
     .from("checklist_templates")
     .select("*")
     .eq("outlet_id", profile.outlet_id)
     .eq("name", "closing")
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  const template = templates?.[0];
 
   if (!template) {
     return (

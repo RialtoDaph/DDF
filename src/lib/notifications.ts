@@ -17,6 +17,10 @@ export async function getNotifications(
   const today = new Date();
   const today10 = today.toISOString().slice(0, 10);
   const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Goods receipts stay in stock_movements forever, so without a lower bound
+  // every expiry date ever recorded keeps reporting "abgelaufen" and crowds
+  // the newer alerts out of the (capped) bell list.
+  const since30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const [{ data: items }, { data: expiring }, { data: tasks }, { data: templates }] = await Promise.all([
     supabase.from("inventory_items").select("id, name, current_stock, par_level"),
@@ -24,6 +28,7 @@ export async function getNotifications(
       .from("stock_movements")
       .select("id, expiry_date, inventory_items(name)")
       .not("expiry_date", "is", null)
+      .gte("expiry_date", since30Days)
       .lte("expiry_date", in7Days)
       .order("expiry_date", { ascending: true })
       .limit(5),

@@ -4,9 +4,9 @@ import { LoginForm } from "./LoginForm";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; deactivated?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, deactivated } = await searchParams;
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/dashboard";
 
   return (
@@ -17,6 +17,11 @@ export default async function LoginPage({
           <h1 className="font-serif text-3xl text-parchment">Bar-Management</h1>
           <p className="text-sm text-parchment-dim mt-2">Internes System · Nur fuer Mitarbeitende</p>
         </div>
+        {deactivated && (
+          <p className="text-sm text-warn border border-warn/40 bg-warn-soft rounded-md px-3 py-2 mb-4">
+            Dieses Konto wurde deaktiviert. Bitte wende dich an einen Manager oder Owner.
+          </p>
+        )}
         <div className="paper-card p-6">
           <LoginForm next={safeNext} />
         </div>

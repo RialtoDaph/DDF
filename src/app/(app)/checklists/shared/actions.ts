@@ -22,6 +22,23 @@ export async function createDefaultTemplate(type: ChecklistType) {
   }
 
   const supabase = await createClient();
+
+  // Idempotent: the button is reachable from both the checklist page and
+  // settings, and a double click used to leave the outlet with two templates
+  // of the same name — which then broke every read of that checklist.
+  const { data: existing } = await supabase
+    .from("checklist_templates")
+    .select("id")
+    .eq("outlet_id", profile.outlet_id)
+    .eq("name", type)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    revalidatePath(`/checklists/${type}`);
+    revalidatePath("/settings/checklists");
+    return { success: true };
+  }
+
   const { error } = await supabase.from("checklist_templates").insert({
     name: type,
     outlet_id: profile.outlet_id,
@@ -30,6 +47,7 @@ export async function createDefaultTemplate(type: ChecklistType) {
 
   if (error) return { error: error.message };
   revalidatePath(`/checklists/${type}`);
+  revalidatePath("/settings/checklists");
   return { success: true };
 }
 

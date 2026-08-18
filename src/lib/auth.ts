@@ -33,6 +33,14 @@ export const requireProfile = cache(async (): Promise<Profile> => {
     redirect("/login");
   }
 
+  // A deactivated account keeps a valid session until it is signed out, so
+  // bounce it through the sign-out route — cookies can't be cleared from a
+  // Server Component render, and redirecting straight to /login would just
+  // ping-pong against the middleware's signed-in redirect.
+  if (!profile.is_active) {
+    redirect("/auth/signout?reason=deactivated");
+  }
+
   return profile;
 });
 
