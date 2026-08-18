@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionState } from "@/lib/actionState";
 
 export async function signIn(_prevState: unknown, formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -16,6 +17,29 @@ export async function signIn(_prevState: unknown, formData: FormData) {
   }
 
   redirect(next || "/dashboard");
+}
+
+export async function signUp(_prevState: ActionState, formData: FormData) {
+  const name = String(formData.get("name") ?? "");
+  const email = String(formData.get("email") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name } },
+  });
+
+  if (error) {
+    return { error: "Registrierung fehlgeschlagen. Bitte Angaben pruefen." };
+  }
+
+  if (data.session) {
+    redirect("/dashboard");
+  }
+
+  return { success: true };
 }
 
 export async function signOut() {

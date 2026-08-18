@@ -1,28 +1,22 @@
 import Link from "next/link";
-import { LoginForm } from "./LoginForm";
+import { SignUpForm } from "./SignUpForm";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>;
-}) {
-  const { next } = await searchParams;
-
+export default function SignUpPage() {
   return (
     <div className="flex flex-1 items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <p className="text-xs tracking-[0.3em] uppercase text-brass mb-2">The Logbook</p>
-          <h1 className="font-serif text-3xl text-parchment">Bar-Management</h1>
+          <h1 className="font-serif text-3xl text-parchment">Konto erstellen</h1>
           <p className="text-sm text-parchment-dim mt-2">Internes System · Nur fuer Mitarbeitende</p>
         </div>
         <div className="paper-card p-6">
-          <LoginForm next={next ?? "/dashboard"} />
+          <SignUpForm />
         </div>
         <p className="text-center text-sm text-parchment-dim mt-4">
-          Noch kein Konto?{" "}
-          <Link href="/signup" className="text-brass hover:underline">
-            Registrieren
+          Bereits ein Konto?{" "}
+          <Link href="/login" className="text-brass hover:underline">
+            Anmelden
           </Link>
         </p>
       </div>
