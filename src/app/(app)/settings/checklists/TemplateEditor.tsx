@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
-import { addTemplateItem, removeTemplateItem } from "../actions";
+import { useActionState } from "react";
+import { addTemplateItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { type ActionState, initialActionState } from "@/lib/actionState";
-import { X } from "lucide-react";
+import { TemplateItemRow } from "./TemplateItemRow";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
 
 export function TemplateEditor({
@@ -19,7 +19,6 @@ export function TemplateEditor({
   items: ChecklistTemplateItem[];
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addTemplateItem, initialActionState);
-  const [, startTransition] = useTransition();
 
   return (
     <Card>
@@ -27,23 +26,14 @@ export function TemplateEditor({
       {items.length > 0 && (
         <ul className="divide-y divide-ink-border mb-4">
           {items.map((item, i) => (
-            <li key={`${item.text}-${i}`} className="flex items-center justify-between gap-2 py-2">
-              <div>
-                <p className="text-sm text-parchment">{item.text}</p>
-                <p className="text-xs text-parchment-dim">
-                  {item.category}
-                  {item.requires_photo ? " · fotopflichtig" : ""}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => startTransition(() => removeTemplateItem(templateId, i))}
-                aria-label="Punkt entfernen"
-                className="text-parchment-dim hover:text-warn shrink-0"
-              >
-                <X size={14} />
-              </button>
-            </li>
+            <TemplateItemRow
+              key={`${item.text}-${i}`}
+              templateId={templateId}
+              index={i}
+              item={item}
+              isFirst={i === 0}
+              isLast={i === items.length - 1}
+            />
           ))}
         </ul>
       )}
