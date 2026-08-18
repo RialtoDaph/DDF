@@ -21,7 +21,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Logbook — Bar Management",
+  title: "Der Dicke Franz System",
   description: "Internes Bar-Management: Inventar, Checklisten, Schulung & Berichte.",
 };
 

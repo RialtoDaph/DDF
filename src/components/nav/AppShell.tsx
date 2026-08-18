@@ -47,7 +47,7 @@ export function AppShell({
           >
             <Menu size={22} />
           </button>
-          <span className="font-serif text-lg text-brass">The Logbook</span>
+          <span className="font-serif text-lg text-brass">Der Dicke Franz</span>
           <NotificationBell notifications={notifications} />
         </header>
 
@@ -55,7 +55,7 @@ export function AppShell({
           <div className="md:hidden fixed inset-0 z-50 flex">
             <div className="w-72 bg-ink-raised border-r border-ink-border flex flex-col">
               <div className="flex items-center justify-between px-4 h-14 border-b border-ink-border">
-                <span className="font-serif text-lg text-brass">The Logbook</span>
+                <span className="font-serif text-lg text-brass">Der Dicke Franz</span>
                 <button onClick={() => setOpen(false)} aria-label="Menue schliessen" className="p-2 text-parchment">
                   <X size={20} />
                 </button>
@@ -95,8 +95,8 @@ function SidebarContent({
   return (
     <div className="flex flex-col h-full">
       <div className="hidden md:block px-5 py-5 border-b border-ink-border">
-        <p className="text-[0.65rem] tracking-[0.3em] uppercase text-brass mb-1">The Logbook</p>
-        <p className="font-serif text-xl text-parchment leading-tight">Bar-Management</p>
+        <p className="text-[0.65rem] tracking-[0.3em] uppercase text-brass mb-1">Der Dicke Franz</p>
+        <p className="font-serif text-xl text-parchment leading-tight">System</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">

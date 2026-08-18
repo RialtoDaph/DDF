@@ -1,4 +1,4 @@
-# The Logbook — Bar-Management
+# Der Dicke Franz System
 
 Internes Bar-Management fuer eine Hotel-Bar: Inventar, Lieferanten, Rezepte/Kosten,
 Aufgaben, Opening/Closing-Checklisten (inkl. Round Check mit Live-Foto-Pflicht),
