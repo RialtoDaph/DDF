@@ -314,6 +314,29 @@ export interface Database {
           change_detail?: unknown;
         }
       >;
+      handbook_sections: Table<
+        {
+          id: string;
+          outlet_id: string;
+          category: string;
+          title: string;
+          body: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+          updated_by: string | null;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          category?: string;
+          title: string;
+          body?: string;
+          sort_order?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
