@@ -1,0 +1,72 @@
+"use client";
+
+import { useActionState } from "react";
+import { updateUserProfile } from "./actions";
+import { Select } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
+import { type ActionState, initialActionState } from "@/lib/actionState";
+import type { UserRole } from "@/lib/database.types";
+
+const ROLE_LABEL: Record<UserRole, string> = { owner: "Owner", manager: "Manager", staff: "Mitarbeiter" };
+
+export function UserRow({
+  user,
+  outlets,
+  canEditRole,
+  isSelf,
+}: {
+  user: { id: string; name: string; email: string; role: UserRole; outlet_id: string | null; is_active: boolean };
+  outlets: { id: string; name: string }[];
+  canEditRole: boolean;
+  isSelf: boolean;
+}) {
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(updateUserProfile, initialActionState);
+
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-3 py-3">
+      <input type="hidden" name="id" value={user.id} />
+      <div className="min-w-40 flex-1">
+        <p className="text-sm text-parchment">
+          {user.name} {isSelf && <span className="text-parchment-dim text-xs">(du)</span>}
+        </p>
+        <p className="text-xs text-parchment-dim">{user.email}</p>
+      </div>
+
+      {canEditRole ? (
+        <Select name="role" defaultValue={user.role} className="w-36" disabled={isSelf}>
+          <option value="owner">Owner</option>
+          <option value="manager">Manager</option>
+          <option value="staff">Mitarbeiter</option>
+        </Select>
+      ) : (
+        <>
+          <span className="text-xs uppercase tracking-wide text-parchment-dim w-36">{ROLE_LABEL[user.role]}</span>
+          <input type="hidden" name="role" value={user.role} />
+        </>
+      )}
+
+      {canEditRole ? (
+        <Select name="outlet_id" defaultValue={user.outlet_id ?? ""} className="w-40">
+          <option value="">— kein Standort —</option>
+          {outlets.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </Select>
+      ) : (
+        <input type="hidden" name="outlet_id" value={user.outlet_id ?? ""} />
+      )}
+
+      <label className="flex items-center gap-2 text-xs text-parchment-dim">
+        <input type="checkbox" name="is_active" defaultChecked={user.is_active} className="accent-brass" disabled={isSelf} />
+        Aktiv
+      </label>
+
+      <Button type="submit" variant="ghost" disabled={pending || isSelf} className="text-xs">
+        {pending ? "…" : "Speichern"}
+      </Button>
+      {state?.error && <p className="text-xs text-warn w-full">{state.error}</p>}
+    </form>
+  );
+}
