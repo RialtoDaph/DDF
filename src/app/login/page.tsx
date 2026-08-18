@@ -7,6 +7,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next } = await searchParams;
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/dashboard";
 
   return (
     <div className="flex flex-1 items-center justify-center px-4">
@@ -17,7 +18,7 @@ export default async function LoginPage({
           <p className="text-sm text-parchment-dim mt-2">Internes System · Nur fuer Mitarbeitende</p>
         </div>
         <div className="paper-card p-6">
-          <LoginForm next={next ?? "/dashboard"} />
+          <LoginForm next={safeNext} />
         </div>
         <p className="text-center text-sm text-parchment-dim mt-4">
           Noch kein Konto?{" "}

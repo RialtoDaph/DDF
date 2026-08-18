@@ -4,10 +4,23 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/lib/actionState";
 
+/**
+ * Only ever redirect to a same-app relative path. Rejects absolute URLs and
+ * protocol-relative ("//host/...") values so a crafted `next` query param
+ * can't be used to bounce a freshly-authenticated user off-site.
+ */
+function safeNext(value: string | null) {
+  if (!value) return "/dashboard";
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  return value;
+}
+
 export async function signIn(_prevState: unknown, formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/dashboard");
+  const next = safeNext(formData.get("next") ? String(formData.get("next")) : null);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -16,7 +29,7 @@ export async function signIn(_prevState: unknown, formData: FormData) {
     return { error: "Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort pruefen." };
   }
 
-  redirect(next || "/dashboard");
+  redirect(next);
 }
 
 export async function signUp(_prevState: ActionState, formData: FormData) {

@@ -51,7 +51,7 @@ export async function setTaskStatus(taskId: string, status: TaskStatus) {
     const next = new Date(base);
     next.setDate(next.getDate() + (task.recurrence === "daily" ? 1 : 7));
 
-    await supabase.from("tasks").insert({
+    const { error: recurError } = await supabase.from("tasks").insert({
       title: task.title,
       description: task.description,
       assigned_to: task.assigned_to,
@@ -60,6 +60,13 @@ export async function setTaskStatus(taskId: string, status: TaskStatus) {
       outlet_id: task.outlet_id,
       created_by: task.created_by,
     });
+    if (recurError) {
+      // Non-owner/manager assignees can be blocked from creating the next
+      // occurrence by the tasks_insert RLS policy. Don't fail the status
+      // update over it (the primary action still succeeded) — but don't
+      // swallow it silently either, so the missed occurrence is traceable.
+      console.error(`setTaskStatus: failed to create recurring follow-up for task ${taskId}:`, recurError.message);
+    }
   }
 
   revalidatePath("/tasks");

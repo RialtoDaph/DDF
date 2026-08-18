@@ -117,6 +117,7 @@ export async function saveHandoverNote(formData: FormData) {
 }
 
 export async function submitChecklist(submissionId: string, type: ChecklistType) {
+  await requireProfile();
   const supabase = await createClient();
   const { error } = await supabase
     .from("checklist_submissions")
