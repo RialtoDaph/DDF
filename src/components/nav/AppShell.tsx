@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { NavItem } from "@/lib/nav";
+import { navForRole, type NavItem } from "@/lib/nav";
 import type { Notification } from "@/lib/notifications";
+import type { UserRole } from "@/lib/database.types";
 import { signOut } from "@/app/auth/actions";
 import { NotificationBell } from "./NotificationBell";
 
@@ -17,18 +18,17 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export function AppShell({
-  navItems,
   profile,
   notifications,
   children,
 }: {
-  navItems: NavItem[];
-  profile: { name: string; role: string; email: string };
+  profile: { name: string; role: UserRole; email: string };
   notifications: Notification[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const navItems = navForRole(profile.role);
 
   return (
     <div className="flex min-h-screen">
@@ -88,7 +88,7 @@ function SidebarContent({
   onNavigate,
 }: {
   navItems: NavItem[];
-  profile: { name: string; role: string; email: string };
+  profile: { name: string; role: UserRole; email: string };
   pathname: string;
   onNavigate?: () => void;
 }) {
