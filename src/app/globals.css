@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+:root {
+  /* Ledger / Ink palette */
+  --color-ink: #14110e;
+  --color-ink-raised: #1c1710;
+  --color-ink-card: #201a12;
+  --color-ink-border: #3a3122;
+  --color-brass: #c9a15c;
+  --color-brass-soft: #a9895a;
+  --color-parchment: #ede3d0;
+  --color-parchment-dim: #b8ac93;
+  --color-done: #6f8f6a;
+  --color-done-soft: #2a3327;
+  --color-warn: #b1543a;
+  --color-warn-soft: #372420;
+
+  --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-ink-raised: var(--color-ink-raised);
+  --color-ink-card: var(--color-ink-card);
+  --color-ink-border: var(--color-ink-border);
+  --color-brass: var(--color-brass);
+  --color-brass-soft: var(--color-brass-soft);
+  --color-parchment: var(--color-parchment);
+  --color-parchment-dim: var(--color-parchment-dim);
+  --color-done: var(--color-done);
+  --color-done-soft: var(--color-done-soft);
+  --color-warn: var(--color-warn);
+  --color-warn-soft: var(--color-warn-soft);
+
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-parchment);
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201, 161, 92, 0.06), transparent),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.06) 0px, rgba(0, 0, 0, 0.06) 1px, transparent 1px, transparent 3px);
+}
+
+* {
+  border-color: var(--color-ink-border);
+}
+
+::selection {
+  background: var(--color-brass);
+  color: var(--color-ink);
+}
+
+/* Signature "ink stamp" badge for completed items */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-done);
+  border: 1.5px solid var(--color-done);
+  border-radius: 3px;
+  padding: 0.15rem 0.5rem;
+  transform: rotate(-3deg);
+  background: color-mix(in srgb, var(--color-done) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-done) 25%, transparent) inset;
+  user-select: none;
+}
+
+.stamp::before {
+  content: "";
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 9999px;
+  background: var(--color-done);
+  flex: none;
+}
+
+.stamp-warn {
+  color: var(--color-warn);
+  border-color: var(--color-warn);
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 25%, transparent) inset;
+}
+
+.stamp-warn::before {
+  background: var(--color-warn);
+}
+
+.paper-card {
+  background: var(--color-ink-card);
+  border: 1px solid var(--color-ink-border);
+  border-radius: 0.5rem;
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+}
