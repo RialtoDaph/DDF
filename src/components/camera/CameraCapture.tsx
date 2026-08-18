@@ -46,6 +46,16 @@ export function CameraCapture({
 
   useEffect(() => stopStream, [stopStream]);
 
+  // The <video> element only mounts once `streaming` is true, so the stream
+  // can't be attached synchronously inside startCamera (videoRef.current is
+  // still null at that point). Attach it here once the element exists.
+  useEffect(() => {
+    if (streaming && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [streaming]);
+
   async function startCamera() {
     setError(null);
     try {
@@ -54,10 +64,6 @@ export function CameraCapture({
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       setStreaming(true);
     } catch {
       // No camera API / permission denied — fall back to the capture-only
