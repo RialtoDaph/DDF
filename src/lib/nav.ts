@@ -9,6 +9,9 @@ import {
   BookOpenText,
   BarChart3,
   Users,
+  GraduationCap,
+  ScrollText,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,7 +31,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/suppliers", label: "Lieferanten", icon: Truck, roles: ["owner", "manager"] },
   { href: "/menu", label: "Menue & Rezepte", icon: BookOpenText, roles: ["owner", "manager"] },
   { href: "/reports", label: "Berichte", icon: BarChart3, roles: ["owner", "manager"] },
+  { href: "/training", label: "Training", icon: GraduationCap, roles: ["owner", "manager", "staff"] },
   { href: "/users", label: "Benutzer", icon: Users, roles: ["owner", "manager"] },
+  { href: "/audit-log", label: "Audit-Log", icon: ScrollText, roles: ["owner", "manager"] },
+  { href: "/settings/checklists", label: "Einstellungen", icon: Settings, roles: ["owner", "manager"] },
 ];
 
 export function navForRole(role: UserRole): NavItem[] {

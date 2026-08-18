@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData, canApprove } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { defaultTemplateItems } from "./lib";
 import type { ChecklistType } from "@/lib/database.types";
 
@@ -142,6 +143,7 @@ export async function approveChecklist(submissionId: string, type: ChecklistType
     .eq("id", submissionId);
 
   if (error) return { error: error.message };
+  await logAudit(supabase, profile.id, "checklist_approved", "checklist_submissions", { submission_id: submissionId });
   revalidatePath(`/checklists/${type}`);
   return { success: true };
 }

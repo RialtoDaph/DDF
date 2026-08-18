@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import type { ItemCategory, MovementReason, MovementType } from "@/lib/database.types";
 
 export async function createItem(_prevState: unknown, formData: FormData) {
@@ -47,10 +48,11 @@ export async function recordMovement(_prevState: unknown, formData: FormData) {
     return { error: "Bestandskorrekturen erfordern Freigabe durch Manager oder Owner." };
   }
 
+  const quantity = Number(formData.get("quantity") ?? 0);
   const { error } = await supabase.from("stock_movements").insert({
     item_id: itemId,
     type,
-    quantity: Number(formData.get("quantity") ?? 0),
+    quantity,
     reason,
     user_id: profile.id,
     notes: String(formData.get("notes") ?? "") || null,
@@ -60,6 +62,10 @@ export async function recordMovement(_prevState: unknown, formData: FormData) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (reason === "adjustment") {
+    await logAudit(supabase, profile.id, "stock_adjustment", "stock_movements", { item_id: itemId, quantity, type });
   }
 
   revalidatePath(`/inventory/${itemId}`);

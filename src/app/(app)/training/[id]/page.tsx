@@ -1,0 +1,112 @@
+import { notFound } from "next/navigation";
+import { requireProfile, canManageMasterData } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StampBadge } from "@/components/ui/StampBadge";
+import { QuizPlayer } from "./QuizPlayer";
+import { QuizBuilder } from "./QuizBuilder";
+
+interface PlayerQuestion {
+  id: string;
+  question: string;
+  type: "multiple_choice" | "short_answer";
+  options: string[] | null;
+}
+
+export default async function TrainingModuleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const profile = await requireProfile();
+  const supabase = await createClient();
+  const canManage = canManageMasterData(profile.role);
+
+  const [{ data: moduleData }, { data: questions }, { data: myProgress }] = await Promise.all([
+    supabase.from("training_modules").select("*, menu_items(name)").eq("id", id).single(),
+    supabase.rpc("get_quiz_questions", { p_module_id: id }),
+    supabase
+      .from("staff_training_progress")
+      .select("status, last_score")
+      .eq("training_module_id", id)
+      .eq("user_id", profile.id)
+      .maybeSingle(),
+  ]);
+
+  if (!moduleData) notFound();
+
+  let videoUrl: string | null = null;
+  if (moduleData.video_url) {
+    const { data } = await supabase.storage.from("training-videos").createSignedUrl(moduleData.video_url, 3600);
+    videoUrl = data?.signedUrl ?? null;
+  }
+
+  let fullQuestions: { id: string; question: string; type: "multiple_choice" | "short_answer"; options: string[] | null; correct_answer: string }[] = [];
+  let allProgress: { status: string; last_score: number | null; users: { name: string } | null }[] = [];
+
+  if (canManage) {
+    const [{ data: fq }, { data: prog }] = await Promise.all([
+      supabase.from("quiz_questions").select("id, question, type, options, correct_answer").eq("training_module_id", id),
+      supabase.from("staff_training_progress").select("status, last_score, users(name)").eq("training_module_id", id),
+    ]);
+    fullQuestions = (fq ?? []) as typeof fullQuestions;
+    allProgress = (prog ?? []) as unknown as typeof allProgress;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-2xl md:text-3xl text-parchment">{moduleData.title}</h1>
+          {moduleData.menu_items && (
+            <p className="text-xs text-brass-soft mt-1">{(moduleData.menu_items as unknown as { name: string }).name}</p>
+          )}
+        </div>
+        {myProgress?.status === "passed" && <StampBadge>Bestanden</StampBadge>}
+      </div>
+
+      {moduleData.description && <p className="text-sm text-parchment-dim">{moduleData.description}</p>}
+
+      {videoUrl && (
+        <Card>
+          <video src={videoUrl} controls className="w-full rounded-md" />
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader title="Quiz" subtitle="Ab 80% bestanden" />
+        {questions && questions.length > 0 ? (
+          <QuizPlayer moduleId={id} questions={questions as unknown as PlayerQuestion[]} />
+        ) : (
+          <p className="text-sm text-parchment-dim">Noch kein Quiz hinterlegt.</p>
+        )}
+      </Card>
+
+      {canManage && (
+        <Card>
+          <CardHeader title="Quiz verwalten" />
+          <QuizBuilder moduleId={id} questions={fullQuestions} />
+        </Card>
+      )}
+
+      {canManage && (
+        <Card>
+          <CardHeader title="Fortschritt aller Mitarbeitenden" />
+          {allProgress.length === 0 ? (
+            <p className="text-sm text-parchment-dim">Noch keine Versuche.</p>
+          ) : (
+            <ul className="divide-y divide-ink-border">
+              {allProgress.map((p, i) => (
+                <li key={i} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-parchment">{p.users?.name ?? "—"}</span>
+                  {p.status === "passed" ? (
+                    <StampBadge>Bestanden ({p.last_score}%)</StampBadge>
+                  ) : (
+                    <StampBadge variant="warn">{p.status === "in_progress" ? `${p.last_score ?? 0}%` : "Nicht begonnen"}</StampBadge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}

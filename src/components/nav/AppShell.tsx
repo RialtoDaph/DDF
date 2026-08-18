@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/nav";
+import type { Notification } from "@/lib/notifications";
 import { signOut } from "@/app/auth/actions";
+import { NotificationBell } from "./NotificationBell";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -17,10 +19,12 @@ const ROLE_LABEL: Record<string, string> = {
 export function AppShell({
   navItems,
   profile,
+  notifications,
   children,
 }: {
   navItems: NavItem[];
   profile: { name: string; role: string; email: string };
+  notifications: Notification[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -44,7 +48,7 @@ export function AppShell({
             <Menu size={22} />
           </button>
           <span className="font-serif text-lg text-brass">The Logbook</span>
-          <span className="w-8" />
+          <NotificationBell notifications={notifications} />
         </header>
 
         {open && (
@@ -67,7 +71,11 @@ export function AppShell({
           </div>
         )}
 
-        <main className="flex-1 min-w-0 p-4 md:p-8 max-w-6xl w-full mx-auto">{children}</main>
+        <div className="hidden md:flex items-center justify-end px-8 pt-4">
+          <NotificationBell notifications={notifications} />
+        </div>
+
+        <main className="flex-1 min-w-0 p-4 md:px-8 md:pb-8 md:pt-2 max-w-6xl w-full mx-auto">{children}</main>
       </div>
     </div>
   );

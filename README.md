@@ -15,6 +15,8 @@ Tailwind CSS v4, Deployment auf Vercel.
    - `supabase/migrations/0001_init.sql` — Tabellen, Enums, Trigger, Funktionen
    - `supabase/migrations/0002_rls.sql` — Row Level Security je Rolle
    - `supabase/migrations/0003_storage.sql` — Storage-Buckets fuer Fotos/Videos
+   - `supabase/migrations/0004_function_privileges.sql` — schraenkt SECURITY
+     DEFINER-Functions auf die vorgesehenen Aufrufer ein
 3. **Env-Variablen setzen**: `cp .env.example .env.local` und mit den Werten aus
    Supabase → Project Settings → API befuellen.
 4. **Ersten Outlet + Owner-Account anlegen**:
@@ -41,10 +43,24 @@ automatisch ins Bild eingebrannt; die Datei landet im privaten Storage-Bucket
 
 ## Projektstand
 
-Phase 1 (MVP) ist umgesetzt: Auth & Rollen, Inventar, Opening/Closing inkl. Round
-Check, Aufgaben, Dashboard. Lieferanten, Menue/Rezepte, Berichte, Training und
-Benachrichtigungen (Phase 2/3) folgen als naechste Ausbaustufen auf demselben
-Datenmodell (siehe `supabase/migrations/0001_init.sql`).
+Phase 1, 2 und 3 sind umgesetzt:
+
+- **Phase 1**: Auth & Rollen, Inventar, Opening/Closing inkl. Round Check &
+  Fotopflicht, Aufgaben, Dashboard
+- **Phase 2**: Lieferanten (Preisverlauf), Menue & Rezepte (Kosten-/Margen-
+  berechnung), Berichte (Bestand, Ablauf-Tracker, Kosten/Marge, Aufgaben-
+  erledigung pro Mitarbeiter, Closing-Verlauf inkl. Fotos, CSV-Export)
+- **Phase 3**: Training & Quiz (Video-Upload, Scoring serverseitig ueber
+  `submit_quiz_attempt`/`get_quiz_questions`, Fortschritt pro Mitarbeiter),
+  In-App-Benachrichtigungen (Glocke: kritischer Bestand, nahender Ablauf,
+  faellige Aufgaben, nicht ausgefuellte Checklisten), Audit-Log (protokolliert
+  Bestandskorrekturen, Checklisten-Freigaben, Benutzeraenderungen),
+  editierbare Checklisten-Vorlagen unter „Einstellungen"
+
+Echte Push-Benachrichtigungen (Browser-Push) sind bewusst nicht enthalten —
+dafuer braeuchte es zusaetzlich einen Service Worker, VAPID-Schluessel und
+einen geplanten Supabase-Edge-Function-Job; die In-App-Glocke deckt denselben
+Bedarf ohne diese zusaetzliche Infrastruktur ab.
 
 ## Deployment
 
