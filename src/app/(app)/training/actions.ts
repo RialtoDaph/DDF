@@ -1,30 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import type { QuizQuestionType } from "@/lib/database.types";
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 60);
-}
-
-export async function createModule(_prevState: unknown, formData: FormData) {
+// Inserts the module row only — the video (if any) is uploaded directly from
+// the browser straight to Supabase Storage (see NewModuleForm), because
+// routing a multi-MB video file through this server action would hit
+// Next.js's/Vercel's request body size limit and fail silently.
+export async function createModuleRecord(
+  _prevState: unknown,
+  formData: FormData,
+): Promise<{ error?: string; id?: string }> {
   const profile = await requireProfile();
   if (!canManageMasterData(profile.role)) {
     return { error: "Keine Berechtigung." };
   }
 
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { error: "Titel ist erforderlich." };
+
   const supabase = await createClient();
   const { data: module_, error } = await supabase
     .from("training_modules")
     .insert({
-      title: String(formData.get("title") ?? "").trim(),
+      title,
       description: String(formData.get("description") ?? "") || null,
       menu_item_id: String(formData.get("menu_item_id") ?? "") || null,
       created_by: profile.id,
@@ -34,19 +35,20 @@ export async function createModule(_prevState: unknown, formData: FormData) {
 
   if (error) return { error: error.message };
 
-  const video = formData.get("video") as File | null;
-  if (video && video.size > 0) {
-    const path = `${module_.id}/${slugify(video.name || "video")}-${Date.now()}`;
-    const { error: uploadError } = await supabase.storage.from("training-videos").upload(path, video, {
-      contentType: video.type || "video/mp4",
-    });
-    if (uploadError) return { error: uploadError.message };
-
-    await supabase.from("training_modules").update({ video_url: path }).eq("id", module_.id);
-  }
-
   revalidatePath("/training");
-  redirect(`/training/${module_.id}`);
+  return { id: module_.id };
+}
+
+export async function attachModuleVideo(moduleId: string, path: string): Promise<{ error?: string }> {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("training_modules").update({ video_url: path }).eq("id", moduleId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/training/${moduleId}`);
+  return {};
 }
 
 export async function addQuizQuestion(_prevState: unknown, formData: FormData) {

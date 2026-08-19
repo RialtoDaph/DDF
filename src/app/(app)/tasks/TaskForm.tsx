@@ -9,6 +9,17 @@ import { type ActionState, initialActionState } from "@/lib/actionState";
 export function TaskForm({ users }: { users: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(createTask, initialActionState);
   const [open, setOpen] = useState(false);
+  const [prevSuccess, setPrevSuccess] = useState(false);
+
+  // Close the form once the action reports success — the task list below
+  // re-renders from revalidatePath, and closing (rather than leaving the
+  // filled-in form sitting there) is the visible confirmation that it saved.
+  if (state.success && !prevSuccess) {
+    setPrevSuccess(true);
+    setOpen(false);
+  } else if (!state.success && prevSuccess) {
+    setPrevSuccess(false);
+  }
 
   if (!open) {
     return (

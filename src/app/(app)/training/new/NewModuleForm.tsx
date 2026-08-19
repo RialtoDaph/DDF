@@ -1,16 +1,74 @@
 "use client";
 
-import { useActionState } from "react";
-import { createModule } from "../actions";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createModuleRecord, attachModuleVideo } from "../actions";
+import { createClient } from "@/lib/supabase/client";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { type ActionState, initialActionState } from "@/lib/actionState";
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 60);
+}
 
 export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: string }[] }) {
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(createModule, initialActionState);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState("Wird gespeichert…");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [supabase] = useState(() => createClient());
+  const router = useRouter();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    setError(null);
+    setBusy(true);
+    setBusyLabel("Wird gespeichert…");
+
+    const textData = new FormData();
+    textData.set("title", (form.elements.namedItem("title") as HTMLInputElement).value);
+    textData.set("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
+    textData.set("menu_item_id", (form.elements.namedItem("menu_item_id") as HTMLSelectElement).value);
+
+    const result = await createModuleRecord(undefined, textData);
+    if (result.error || !result.id) {
+      setError(result.error ?? "Unbekannter Fehler.");
+      setBusy(false);
+      return;
+    }
+
+    const video = fileRef.current?.files?.[0];
+    if (video && video.size > 0) {
+      setBusyLabel("Video wird hochgeladen…");
+      const path = `${result.id}/${slugify(video.name || "video")}-${Date.now()}`;
+      const { error: uploadError } = await supabase.storage
+        .from("training-videos")
+        .upload(path, video, { contentType: video.type || "video/mp4" });
+
+      if (uploadError) {
+        setError(uploadError.message);
+        setBusy(false);
+        return;
+      }
+
+      const attachResult = await attachModuleVideo(result.id, path);
+      if (attachResult.error) {
+        setError(attachResult.error);
+        setBusy(false);
+        return;
+      }
+    }
+
+    router.push(`/training/${result.id}`);
+  }
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="title">Titel</Label>
         <Input id="title" name="title" required placeholder="z. B. Old Fashioned zubereiten" />
@@ -33,6 +91,7 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
       <div>
         <Label htmlFor="video">Video</Label>
         <input
+          ref={fileRef}
           id="video"
           name="video"
           type="file"
@@ -40,9 +99,9 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
           className="block w-full text-sm text-parchment-dim file:mr-3 file:rounded-md file:border-0 file:bg-wine file:px-3 file:py-2 file:text-ink file:text-sm"
         />
       </div>
-      {state?.error && <p className="text-sm text-warn">{state.error}</p>}
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Wird gespeichert…" : "Modul anlegen"}
+      {error && <p className="text-sm text-warn">{error}</p>}
+      <Button type="submit" disabled={busy} className="w-full">
+        {busy ? busyLabel : "Modul anlegen"}
       </Button>
     </form>
   );

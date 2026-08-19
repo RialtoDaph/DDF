@@ -20,6 +20,18 @@ export function QuizBuilder({ moduleId, questions }: { moduleId: string; questio
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addQuizQuestion, initialActionState);
   const [type, setType] = useState<QuizQuestionType>("multiple_choice");
   const [, startTransition] = useTransition();
+  const [prevSuccess, setPrevSuccess] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+
+  // Clear the form (remount it via key) once a question is saved, so the
+  // uncontrolled question/answer fields don't sit there looking unsaved.
+  if (state.success && !prevSuccess) {
+    setPrevSuccess(true);
+    setType("multiple_choice");
+    setResetKey((k) => k + 1);
+  } else if (!state.success && prevSuccess) {
+    setPrevSuccess(false);
+  }
 
   return (
     <div className="space-y-4">
@@ -49,7 +61,7 @@ export function QuizBuilder({ moduleId, questions }: { moduleId: string; questio
         </ul>
       )}
 
-      <form action={formAction} className="space-y-3 pt-2 border-t border-ink-border">
+      <form key={resetKey} action={formAction} className="space-y-3 pt-2 border-t border-ink-border">
         <input type="hidden" name="training_module_id" value={moduleId} />
         <div>
           <Label htmlFor="question">Frage</Label>
