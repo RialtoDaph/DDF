@@ -339,6 +339,10 @@ export interface Database {
           updated_by?: string | null;
         }
       >;
+      chat_messages: Table<
+        { id: string; outlet_id: string; user_id: string; content: string; created_at: string },
+        { id?: string; outlet_id: string; user_id: string; content: string }
+      >;
     };
     Views: Record<string, never>;
     Functions: {

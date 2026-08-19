@@ -15,6 +15,7 @@ import {
   GraduationCap,
   ScrollText,
   Settings,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/checklists/weekly", label: "Wochencheck", icon: CalendarDays, roles: ["owner", "manager", "staff"] },
   { href: "/checklists/monthly", label: "Monatscheck", icon: CalendarRange, roles: ["owner", "manager", "staff"] },
   { href: "/tasks", label: "Aufgaben", icon: ListChecks, roles: ["owner", "manager", "staff"] },
+  { href: "/chat", label: "Chat", icon: MessageCircle, roles: ["owner", "manager", "staff"] },
   { href: "/suppliers", label: "Lieferanten", icon: Truck, roles: ["owner", "manager"] },
   { href: "/menu", label: "Menue & Rezepte", icon: BookOpenText, roles: ["owner", "manager"] },
   { href: "/reports", label: "Berichte", icon: BarChart3, roles: ["owner", "manager"] },
