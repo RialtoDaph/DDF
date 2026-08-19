@@ -26,12 +26,36 @@ export function videoTooLargeMessage(bytes: number) {
   return `Video ist zu groß (${(bytes / (1024 * 1024)).toFixed(0)} MB). Maximal 50 MB — bitte komprimieren oder kürzen.`;
 }
 
-export type UploadPhase = "compressing" | "uploading";
+export type UploadPhase = "preparing" | "compressing" | "uploading";
 
-/** Shared progress-label formatting for the compress/upload phases. */
+/** Shared progress-label formatting for the prepare/compress/upload phases. */
 export function uploadProgressLabel(phase: UploadPhase, ratio: number, uploadingLabel: string): string {
-  const pct = Math.round(ratio * 100);
-  return phase === "compressing" ? `Video wird komprimiert… ${pct}%` : uploadingLabel;
+  if (phase === "preparing") return "Video wird vorbereitet… (kann beim ersten Mal etwas dauern)";
+  if (phase === "compressing") return `Video wird komprimiert… ${Math.round(ratio * 100)}%`;
+  return uploadingLabel;
+}
+
+// A silent hang (a stalled fetch of the ~30MB compressor on a weak mobile
+// connection, a worker that never starts) must not leave the form disabled
+// forever with no way out. This bounds the compress+upload attempt as a
+// whole; the timeout itself does not need to be tight, since it only fires
+// on something that was already stuck.
+const OVERALL_TIMEOUT_MS = 6 * 60 * 1000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, onTimeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(onTimeoutMessage)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }
 
 /**
@@ -46,13 +70,31 @@ export async function uploadTrainingVideo(
   video: File,
   onProgress?: (phase: UploadPhase, ratio: number) => void,
 ): Promise<{ path?: string; error?: string }> {
-  let toUpload = video;
-
   if (video.size > MAX_SOURCE_BYTES) {
     return { error: videoTooLargeForCompressionMessage(video.size) };
   }
 
+  try {
+    return await withTimeout(
+      runUpload(supabase, moduleId, video, onProgress),
+      OVERALL_TIMEOUT_MS,
+      "Zeitüberschreitung beim Hochladen. Pruefe deine Verbindung und versuche es mit besserem WLAN/Empfang erneut — oder waehle ein kuerzeres Video.",
+    );
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Unbekannter Fehler beim Hochladen." };
+  }
+}
+
+async function runUpload(
+  supabase: SupabaseClient,
+  moduleId: string,
+  video: File,
+  onProgress?: (phase: UploadPhase, ratio: number) => void,
+): Promise<{ path?: string; error?: string }> {
+  let toUpload = video;
+
   if (video.size > MAX_VIDEO_BYTES) {
+    onProgress?.("preparing", 0);
     try {
       toUpload = await compressVideo(video, (ratio) => onProgress?.("compressing", ratio));
     } catch {
