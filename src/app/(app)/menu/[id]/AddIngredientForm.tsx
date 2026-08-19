@@ -5,6 +5,7 @@ import { addIngredient } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
+import { RECIPE_AMOUNT_HELPERS } from "../../inventory/units";
 
 export function AddIngredientForm({
   menuItemId,
@@ -15,13 +16,13 @@ export function AddIngredientForm({
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addIngredient, initialActionState);
   const [selectedId, setSelectedId] = useState("");
-  const [amountMl, setAmountMl] = useState("");
+  const [amount, setAmount] = useState("");
 
-  // Recipe amounts are always stored in the ingredient's own unit (ml, here)
-  // so existing recipe rows and cost math don't need to know about cl at
-  // all — this is just a convenience calculator for the person typing.
-  const selectedUnit = items.find((i) => i.id === selectedId)?.unit;
-  const showClHelper = selectedUnit === "ml";
+  // Recipe amounts are always stored in the ingredient's own unit, whatever
+  // that is — the helper field below is just a smaller-unit calculator for
+  // the person typing, converted before it ever reaches the base field.
+  const selectedUnit = items.find((i) => i.id === selectedId)?.unit ?? "";
+  const helper = RECIPE_AMOUNT_HELPERS[selectedUnit.trim().toLowerCase()];
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
@@ -46,7 +47,7 @@ export function AddIngredientForm({
         </Select>
       </div>
       <div className="w-28">
-        <Label htmlFor="amount">Menge (ml)</Label>
+        <Label htmlFor="amount">Menge{selectedUnit ? ` (${selectedUnit})` : ""}</Label>
         <Input
           id="amount"
           name="amount"
@@ -54,20 +55,20 @@ export function AddIngredientForm({
           step="0.001"
           min="0.001"
           required
-          value={amountMl}
-          onChange={(e) => setAmountMl(e.target.value)}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
         />
       </div>
-      {showClHelper && (
+      {helper && (
         <div className="w-24">
-          <Label htmlFor="amount-cl">oder cl</Label>
+          <Label htmlFor="amount-helper">oder {helper.label}</Label>
           <Input
-            id="amount-cl"
+            id="amount-helper"
             type="number"
             step="0.01"
             min="0.01"
-            placeholder="z. B. 5"
-            onChange={(e) => setAmountMl(e.target.value ? String(Number(e.target.value) * 10) : "")}
+            placeholder={`z. B. 5`}
+            onChange={(e) => setAmount(e.target.value ? String(Number(e.target.value) * helper.factor) : "")}
           />
         </div>
       )}
