@@ -15,17 +15,28 @@ export default async function MenuItemDetailPage({ params }: { params: Promise<{
     supabase.from("menu_items").select("*").eq("id", id).single(),
     supabase
       .from("recipes")
-      .select("id, amount, inventory_items(id, name, unit, purchase_price)")
+      .select("id, amount, inventory_items(id, name, unit, unit_volume_ml, purchase_price)")
       .eq("menu_item_id", id),
-    supabase.from("inventory_items").select("id, name, unit").order("name"),
+    supabase.from("inventory_items").select("id, name, unit, unit_volume_ml").order("name"),
   ]);
 
   if (!menuItem) notFound();
   const canManage = canManageMasterData(profile.role);
 
   const ingredients = (recipes ?? []).map((r) => {
-    const item = r.inventory_items as unknown as { id: string; name: string; unit: string; purchase_price: number | null } | null;
-    const lineCost = r.amount * (item?.purchase_price ?? 0);
+    const item = r.inventory_items as unknown as {
+      id: string;
+      name: string;
+      unit: string;
+      unit_volume_ml: number | null;
+      purchase_price: number | null;
+    } | null;
+    // purchase_price is what one stock unit costs (e.g. one bottle) — a
+    // recipe's amount is in ml, so without unit_volume_ml (ml per bottle)
+    // the naive amount * purchase_price treats the price as "per ml" and
+    // massively overcounts. Derive a price-per-ml when it's set.
+    const pricePerMl = item?.unit_volume_ml ? (item.purchase_price ?? 0) / item.unit_volume_ml : (item?.purchase_price ?? 0);
+    const lineCost = r.amount * pricePerMl;
     return { recipeId: r.id, amount: r.amount, name: item?.name ?? "—", unit: item?.unit ?? "", lineCost };
   });
 
