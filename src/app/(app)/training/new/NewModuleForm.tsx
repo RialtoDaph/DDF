@@ -15,6 +15,12 @@ function slugify(text: string) {
     .slice(0, 60);
 }
 
+// Supabase's Free plan enforces a fixed 50 MB upload limit project-wide,
+// regardless of the training-videos bucket's own (larger) limit. Check this
+// up front so a too-large video is caught before the module row is even
+// created, instead of failing partway through with an orphaned module.
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
 export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: string }[] }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,6 +33,15 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     e.preventDefault();
     const form = e.currentTarget;
     setError(null);
+
+    const video = fileRef.current?.files?.[0];
+    if (video && video.size > MAX_VIDEO_BYTES) {
+      setError(
+        `Video ist zu groß (${(video.size / (1024 * 1024)).toFixed(0)} MB). Maximal 50 MB — bitte komprimieren oder kürzen.`,
+      );
+      return;
+    }
+
     setBusy(true);
     setBusyLabel("Wird gespeichert…");
 
@@ -42,7 +57,6 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
       return;
     }
 
-    const video = fileRef.current?.files?.[0];
     if (video && video.size > 0) {
       setBusyLabel("Video wird hochgeladen…");
       const path = `${result.id}/${slugify(video.name || "video")}-${Date.now()}`;
@@ -96,7 +110,7 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
         <Textarea id="description" name="description" rows={3} />
       </div>
       <div>
-        <Label htmlFor="video">Video</Label>
+        <Label htmlFor="video">Video (max. 50 MB)</Label>
         <input
           ref={fileRef}
           id="video"
