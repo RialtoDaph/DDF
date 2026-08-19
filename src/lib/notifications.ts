@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
+import type { Database, ChecklistType } from "@/lib/database.types";
 import type { Profile } from "@/lib/auth";
+import { CHECKLIST_TYPES, periodStartFor } from "@/app/(app)/checklists/shared/lib";
 
 export interface Notification {
   id: string;
@@ -77,32 +78,37 @@ export async function getNotifications(
   }
 
   if (profile.outlet_id && templates && templates.length > 0) {
-    const templateIds = templates.map((t) => t.id);
+    const periods = [...new Set(CHECKLIST_TYPES.map((t) => periodStartFor(t)))];
     const { data: submissions } = await supabase
       .from("checklist_submissions")
-      .select("template_id, status")
-      .in("template_id", templateIds)
-      .eq("date", today10)
+      .select("template_id, status, period_start")
+      .in("template_id", templates.map((t) => t.id))
+      .in("period_start", periods)
       .eq("user_id", profile.id);
 
-    const openingTemplate = templates.find((t) => t.name === "opening");
-    const closingTemplate = templates.find((t) => t.name === "closing");
-    const openingDone = submissions?.some((s) => s.template_id === openingTemplate?.id && s.status !== "draft");
-    const closingDone = submissions?.some((s) => s.template_id === closingTemplate?.id && s.status !== "draft");
+    // Each type is judged against its own period, so a Wochencheck stops
+    // nagging for the rest of the week once it has been handed in.
+    const OPEN_LABEL: Record<ChecklistType, string> = {
+      opening: "Opening-Checkliste heute noch nicht eingereicht",
+      closing: "Closing-Checkliste heute noch nicht eingereicht",
+      weekly: "Wochencheck diese Woche noch nicht eingereicht",
+      monthly: "Monatscheck diesen Monat noch nicht eingereicht",
+    };
 
-    if (openingTemplate && !openingDone) {
+    for (const type of CHECKLIST_TYPES) {
+      const template = templates.find((t) => t.name === type);
+      if (!template) continue;
+
+      const period = periodStartFor(type);
+      const done = submissions?.some(
+        (s) => s.template_id === template.id && s.period_start === period && s.status !== "draft",
+      );
+      if (done) continue;
+
       notifications.push({
-        id: "checklist-opening",
-        message: "Opening-Checkliste heute noch nicht eingereicht",
-        href: "/checklists/opening",
-        severity: "info",
-      });
-    }
-    if (closingTemplate && !closingDone) {
-      notifications.push({
-        id: "checklist-closing",
-        message: "Closing-Checkliste heute noch nicht eingereicht",
-        href: "/checklists/closing",
+        id: `checklist-${type}`,
+        message: OPEN_LABEL[type],
+        href: `/checklists/${type}`,
         severity: "info",
       });
     }

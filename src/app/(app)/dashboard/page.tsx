@@ -4,7 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { GaugeBar } from "@/components/ui/GaugeBar";
 import { StampBadge } from "@/components/ui/StampBadge";
-import { AlertTriangle, ListChecks, Sunrise, Moon } from "lucide-react";
+import { AlertTriangle, ListChecks, Sunrise, Moon, CalendarDays, CalendarRange } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { CHECKLIST_TYPES, CHECKLIST_LABEL, periodStartFor } from "@/app/(app)/checklists/shared/lib";
+import type { ChecklistType } from "@/lib/database.types";
+
+const CHECKLIST_ICON = {
+  opening: Sunrise,
+  closing: Moon,
+  weekly: CalendarDays,
+  monthly: CalendarRange,
+} as const;
 
 export default async function DashboardPage() {
   const profile = await requireProfile();
@@ -38,22 +48,27 @@ export default async function DashboardPage() {
     .sort((a, b) => a.current_stock / a.par_level - b.current_stock / b.par_level)
     .slice(0, 8);
 
-  let openingStatus: string | null = null;
-  let closingStatus: string | null = null;
+  // Each checklist type is measured against its own period — the Wochencheck
+  // counts as done for the whole week, not just for today.
+  const checklistStatus: { type: ChecklistType; status: string | null }[] = [];
 
   if (templates && templates.length > 0) {
-    const templateIds = templates.map((t) => t.id);
+    const periods = [...new Set(CHECKLIST_TYPES.map((t) => periodStartFor(t)))];
     const { data: submissions } = await supabase
       .from("checklist_submissions")
-      .select("id, template_id, status, date")
-      .in("template_id", templateIds)
-      .eq("date", today)
+      .select("template_id, status, period_start")
+      .in("template_id", templates.map((t) => t.id))
+      .in("period_start", periods)
       .eq("user_id", profile.id);
 
-    const openingTemplate = templates.find((t) => t.name === "opening");
-    const closingTemplate = templates.find((t) => t.name === "closing");
-    openingStatus = submissions?.find((s) => s.template_id === openingTemplate?.id)?.status ?? null;
-    closingStatus = submissions?.find((s) => s.template_id === closingTemplate?.id)?.status ?? null;
+    for (const type of CHECKLIST_TYPES) {
+      const template = templates.find((t) => t.name === type);
+      if (!template) continue;
+      const period = periodStartFor(type);
+      const status =
+        submissions?.find((s) => s.template_id === template.id && s.period_start === period)?.status ?? null;
+      checklistStatus.push({ type, status });
+    }
   }
 
   return (
@@ -89,20 +104,26 @@ export default async function DashboardPage() {
           </Card>
         </Link>
         <Card>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Sunrise size={16} className="text-wine" />
-              <span className="text-parchment-dim">Opening</span>
-            </div>
-            <ChecklistStatusBadge status={openingStatus} />
-          </div>
-          <div className="flex items-center justify-between gap-2 mt-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Moon size={16} className="text-wine" />
-              <span className="text-parchment-dim">Closing</span>
-            </div>
-            <ChecklistStatusBadge status={closingStatus} />
-          </div>
+          {checklistStatus.length === 0 ? (
+            <p className="text-sm text-parchment-dim">Noch keine Checklisten-Vorlagen angelegt.</p>
+          ) : (
+            checklistStatus.map(({ type, status }, i) => {
+              const Icon = CHECKLIST_ICON[type];
+              return (
+                <Link
+                  key={type}
+                  href={`/checklists/${type}`}
+                  className={cn("flex items-center justify-between gap-2", i > 0 && "mt-2")}
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    <Icon size={16} className="text-wine" />
+                    <span className="text-parchment-dim">{CHECKLIST_LABEL[type]}</span>
+                  </span>
+                  <ChecklistStatusBadge status={status} />
+                </Link>
+              );
+            })
+          )}
         </Card>
       </div>
 

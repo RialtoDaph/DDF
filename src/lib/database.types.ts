@@ -8,7 +8,7 @@ export type MovementType = "in" | "out";
 export type MovementReason = "restock" | "usage" | "waste" | "adjustment";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type RecurrenceType = "daily" | "weekly" | "none";
-export type ChecklistType = "opening" | "closing";
+export type ChecklistType = "opening" | "closing" | "weekly" | "monthly";
 export type SubmissionStatus = "draft" | "submitted" | "approved";
 export type QuizQuestionType = "multiple_choice" | "short_answer";
 export type TrainingStatus = "not_started" | "in_progress" | "passed";
@@ -177,6 +177,7 @@ export interface Database {
           template_id: string;
           user_id: string;
           date: string;
+          period_start: string;
           shift: string | null;
           cash_count: number | null;
           incident_notes: string | null;
@@ -191,6 +192,7 @@ export interface Database {
           template_id: string;
           user_id: string;
           date?: string;
+          period_start?: string;
           shift?: string | null;
           cash_count?: number | null;
           incident_notes?: string | null;

@@ -1,5 +1,59 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, ChecklistTemplateItem } from "@/lib/database.types";
+import type { Database, ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
+
+export const CHECKLIST_TYPES = ["opening", "closing", "weekly", "monthly"] as const;
+
+export const CHECKLIST_LABEL: Record<ChecklistType, string> = {
+  opening: "Opening",
+  closing: "Closing",
+  weekly: "Wochencheck",
+  monthly: "Monatscheck",
+};
+
+export function isChecklistType(value: string): value is ChecklistType {
+  return (CHECKLIST_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * The period a submission belongs to: the day itself for opening/closing, the
+ * Monday for a weekly check, the 1st for a monthly one. A Wochencheck started
+ * on Tuesday and finished on Thursday has to resolve to the same form, which
+ * is why submissions are keyed by this rather than by the calendar date.
+ */
+export function periodStartFor(type: ChecklistType, now = new Date()): string {
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+  if (type === "weekly") {
+    const mondayOffset = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - mondayOffset);
+  } else if (type === "monthly") {
+    d.setUTCDate(1);
+  }
+
+  return d.toISOString().slice(0, 10);
+}
+
+/** Human label for the period a submission covers, e.g. "Woche ab 17.08.". */
+export function periodLabel(type: ChecklistType, periodStart: string): string {
+  const [y, m, d] = periodStart.split("-").map(Number);
+
+  if (type === "monthly") {
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("de-DE", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+
+  const start = `${String(d).padStart(2, "0")}.${String(m).padStart(2, "0")}.`;
+  if (type === "weekly") {
+    const end = new Date(Date.UTC(y, m - 1, d + 6));
+    const endLabel = `${String(end.getUTCDate()).padStart(2, "0")}.${String(end.getUTCMonth() + 1).padStart(2, "0")}.`;
+    return `Woche ${start}–${endLabel}`;
+  }
+
+  return `${start}${y}`;
+}
 
 export const ROUND_CHECK_CATEGORIES = ["verschluss", "sauberkeit", "geraete", "beleuchtung"] as const;
 
@@ -10,7 +64,31 @@ export const ROUND_CHECK_LABEL: Record<string, string> = {
   beleuchtung: "Beleuchtung",
 };
 
-export function defaultTemplateItems(type: "opening" | "closing"): ChecklistTemplateItem[] {
+export function defaultTemplateItems(type: ChecklistType): ChecklistTemplateItem[] {
+  if (type === "weekly") {
+    return [
+      { text: "Kühlschränke innen gereinigt", requires_photo: true, category: "allgemein" },
+      { text: "Kaffeemaschine entkalkt/durchgespült", requires_photo: true, category: "allgemein" },
+      { text: "Zapfanlage Grundreinigung", requires_photo: true, category: "allgemein" },
+      { text: "Siebe und Ausgüsse gereinigt", requires_photo: false, category: "allgemein" },
+      { text: "Lager aufgeräumt und Ware vorgezogen", requires_photo: false, category: "allgemein" },
+      { text: "Bestand mit Sollbestand abgeglichen", requires_photo: false, category: "allgemein" },
+      { text: "Gläserbruch erfasst", requires_photo: false, category: "allgemein" },
+    ];
+  }
+
+  if (type === "monthly") {
+    return [
+      { text: "Vollständige Inventur durchgeführt", requires_photo: false, category: "allgemein" },
+      { text: "Alle Ablaufdaten geprüft, abgelaufene Ware entsorgt", requires_photo: true, category: "allgemein" },
+      { text: "Kühlschrank-Temperaturen dokumentiert", requires_photo: true, category: "allgemein" },
+      { text: "Feuerlöscher und Notausgang geprüft", requires_photo: true, category: "allgemein" },
+      { text: "Erste-Hilfe-Kasten aufgefüllt", requires_photo: false, category: "allgemein" },
+      { text: "Geräte auf Schäden geprüft", requires_photo: false, category: "allgemein" },
+      { text: "Lieferantenpreise überprüft", requires_photo: false, category: "allgemein" },
+    ];
+  }
+
   if (type === "opening") {
     return [
       { text: "Kasse eingerichtet und Wechselgeld geprüft", requires_photo: false, category: "allgemein" },
@@ -44,14 +122,13 @@ export function defaultTemplateItems(type: "opening" | "closing"): ChecklistTemp
   ];
 }
 
-/** Loads (or creates) today's draft submission for this user + template. */
+/** Loads (or creates) the draft submission for this user + template + period. */
 export async function getOrCreateSubmission(
   supabase: SupabaseClient<Database>,
   templateId: string,
   userId: string,
+  periodStart: string,
 ) {
-  const today = new Date().toISOString().slice(0, 10);
-
   // limit(1) rather than maybeSingle(): this runs during page render, so two
   // near-simultaneous requests (a second tab, a refresh mid-flight) can both
   // miss the read and insert. The unique index added in migration 0006 makes
@@ -63,7 +140,7 @@ export async function getOrCreateSubmission(
       .select("*")
       .eq("template_id", templateId)
       .eq("user_id", userId)
-      .eq("date", today)
+      .eq("period_start", periodStart)
       .order("created_at", { ascending: true })
       .limit(1);
 
@@ -72,7 +149,7 @@ export async function getOrCreateSubmission(
 
   const { data: created, error } = await supabase
     .from("checklist_submissions")
-    .insert({ template_id: templateId, user_id: userId, date: today })
+    .insert({ template_id: templateId, user_id: userId, period_start: periodStart })
     .select("*")
     .single();
 

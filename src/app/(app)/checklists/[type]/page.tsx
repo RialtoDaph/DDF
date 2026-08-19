@@ -1,15 +1,29 @@
+import { notFound } from "next/navigation";
 import { requireProfile, canManageMasterData, canApprove } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getOrCreateSubmission, signedPhotoUrl } from "../shared/lib";
+import {
+  getOrCreateSubmission,
+  signedPhotoUrl,
+  isChecklistType,
+  periodStartFor,
+  periodLabel,
+  CHECKLIST_LABEL,
+} from "../shared/lib";
 import { ChecklistSections, type ItemResultMap } from "../shared/ChecklistSections";
 import { SubmitBar } from "../shared/SubmitBar";
 import { CreateTemplateButton } from "../shared/CreateTemplateButton";
 import { PendingApprovals } from "../shared/PendingApprovals";
+import { ClosingMetaForm, HandoverNoteForm } from "../shared/ClosingExtras";
 import { Card } from "@/components/ui/Card";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
 
-export default async function OpeningChecklistPage() {
+export default async function ChecklistPage({ params }: { params: Promise<{ type: string }> }) {
+  const { type: rawType } = await params;
+  if (!isChecklistType(rawType)) notFound();
+  const type = rawType;
+
   const profile = await requireProfile();
+  const label = CHECKLIST_LABEL[type];
 
   if (!profile.outlet_id) {
     return <Card>Kein Standort zugeordnet. Bitte an einen Owner wenden.</Card>;
@@ -20,7 +34,7 @@ export default async function OpeningChecklistPage() {
     .from("checklist_templates")
     .select("*")
     .eq("outlet_id", profile.outlet_id)
-    .eq("name", "opening")
+    .eq("name", type)
     .order("created_at", { ascending: true })
     .limit(1);
 
@@ -29,11 +43,11 @@ export default async function OpeningChecklistPage() {
   if (!template) {
     return (
       <div className="space-y-4">
-        <h1 className="font-serif text-2xl text-parchment">Opening-Checkliste</h1>
+        <h1 className="font-serif text-2xl text-parchment">{label}</h1>
         <Card>
           <p className="text-sm text-parchment-dim mb-3">Fuer diesen Standort ist noch keine Vorlage angelegt.</p>
           {canManageMasterData(profile.role) ? (
-            <CreateTemplateButton type="opening" />
+            <CreateTemplateButton type={type} />
           ) : (
             <p className="text-sm text-parchment-dim">Bitte einen Manager oder Owner kontaktieren.</p>
           )}
@@ -42,7 +56,9 @@ export default async function OpeningChecklistPage() {
     );
   }
 
-  const submission = await getOrCreateSubmission(supabase, template.id, profile.id);
+  const periodStart = periodStartFor(type);
+  const submission = await getOrCreateSubmission(supabase, template.id, profile.id, periodStart);
+
   const { data: results } = await supabase
     .from("checklist_item_results")
     .select("item_text, checked, photo_url, photo_taken_at")
@@ -63,31 +79,44 @@ export default async function OpeningChecklistPage() {
     .every((i) => resultMap[i.text]?.checked && resultMap[i.text]?.photo_url);
 
   const readOnly = submission.status !== "draft";
+  const isClosing = type === "closing";
 
   return (
     <div className="space-y-6 pb-24">
       <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">Opening-Checkliste</h1>
-        <p className="text-sm text-parchment-dim mt-1">{new Date().toLocaleDateString("de-DE")}</p>
+        <h1 className="font-serif text-2xl md:text-3xl text-parchment">{label}</h1>
+        <p className="text-sm text-parchment-dim mt-1">{periodLabel(type, submission.period_start)}</p>
       </div>
+
+      {isClosing && (
+        <ClosingMetaForm
+          submissionId={submission.id}
+          cashCount={submission.cash_count}
+          incidentNotes={submission.incident_notes}
+          shift={submission.shift}
+          readOnly={readOnly}
+        />
+      )}
 
       <ChecklistSections
         submissionId={submission.id}
         items={items}
         results={resultMap}
         readOnly={readOnly}
-        includeRoundCheck={false}
+        includeRoundCheck={isClosing}
       />
+
+      {isClosing && <HandoverNoteForm readOnly={readOnly} />}
 
       <SubmitBar
         submissionId={submission.id}
-        type="opening"
+        type={type}
         status={submission.status}
         allSatisfied={allSatisfied}
         canApproveRole={canApprove(profile.role)}
       />
 
-      {canApprove(profile.role) && <PendingApprovals templateId={template.id} type="opening" />}
+      {canApprove(profile.role) && <PendingApprovals templateId={template.id} type={type} />}
     </div>
   );
 }
