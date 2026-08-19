@@ -1,9 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { compressVideo } from "./videoCompress";
+import { compressVideo, terminateCompressor } from "./videoCompress";
 
 // Supabase's Free plan enforces a fixed 50 MB upload limit project-wide,
 // regardless of the training-videos bucket's own (larger) limit.
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
+// Trigger compression well below the hard cap: phone-recorded .mov clips
+// are extremely high-bitrate for their length (a short demo can hit 40+ MB
+// while under the 50 MB cap), so waiting until the cap is nearly hit leaves
+// most everyday uploads uncompressed — bloating storage and load times for
+// everyone else viewing the module.
+const COMPRESS_THRESHOLD_BYTES = 8 * 1024 * 1024;
 
 // Above this, don't even attempt in-browser compression — transcoding a
 // multi-GB file with a single-threaded wasm ffmpeg would take forever (or
@@ -32,15 +39,25 @@ export type UploadPhase = "preparing" | "compressing" | "uploading";
 export function uploadProgressLabel(phase: UploadPhase, ratio: number, uploadingLabel: string): string {
   if (phase === "preparing") return "Video wird vorbereitet… (kann beim ersten Mal etwas dauern)";
   if (phase === "compressing") return `Video wird komprimiert… ${Math.round(ratio * 100)}%`;
-  return uploadingLabel;
+  return `${uploadingLabel} ${Math.round(ratio * 100)}%`;
 }
 
-// A silent hang (a stalled fetch of the ~30MB compressor on a weak mobile
-// connection, a worker that never starts) must not leave the form disabled
-// forever with no way out. This bounds the compress+upload attempt as a
-// whole; the timeout itself does not need to be tight, since it only fires
-// on something that was already stuck.
-const OVERALL_TIMEOUT_MS = 6 * 60 * 1000;
+export class UploadCancelledError extends Error {
+  constructor() {
+    super("Hochladen abgebrochen.");
+    this.name = "UploadCancelledError";
+  }
+}
+
+// A JS-level setTimeout is not a reliable backstop on iOS Safari: the tab
+// can be suspended (screen lock, switching to the native Photos picker,
+// memory pressure) and its timers frozen along with it, so a stuck request
+// can outlast any setTimeout-based deadline. xhr.timeout below is enforced
+// by the browser's network stack instead of the JS event loop and is the
+// real guard; this is only a fallback for phases (like ffmpeg compression)
+// that don't go through XHR at all.
+const PHASE_TIMEOUT_MS = 4 * 60 * 1000;
+const XHR_TIMEOUT_MS = 4 * 60 * 1000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, onTimeoutMessage: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -59,28 +76,118 @@ function withTimeout<T>(promise: Promise<T>, ms: number, onTimeoutMessage: strin
 }
 
 /**
+ * Direct upload to Supabase Storage via XHR rather than the supabase-js
+ * client, for two things the wrapped fetch client can't give us:
+ * - xhr.upload.onprogress for a real byte-level percentage, so a slow
+ *   upload is visibly *moving* instead of looking identical to a hang.
+ * - xhr.abort() for a genuine, immediate cancel, and xhr.timeout as a
+ *   network-stack-enforced deadline (see PHASE_TIMEOUT_MS comment).
+ * Mirrors the multipart body storage-js itself sends (FormData with a
+ * cacheControl field and the file under an empty key) so the server sees
+ * an identical request.
+ */
+function uploadWithProgress(
+  supabase: SupabaseClient,
+  bucket: string,
+  path: string,
+  file: Blob,
+  onProgress: (ratio: number) => void,
+  signal: AbortSignal,
+): Promise<{ error?: string }> {
+  return new Promise((resolve) => {
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        resolve({ error: "Sitzung abgelaufen. Bitte Seite neu laden und erneut anmelden." });
+        return;
+      }
+      if (signal.aborted) {
+        resolve({ error: "cancelled" });
+        return;
+      }
+
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
+      const form = new FormData();
+      form.append("cacheControl", "3600");
+      form.append("", file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.setRequestHeader("Authorization", `Bearer ${session.access_token}`);
+      xhr.setRequestHeader("apikey", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.timeout = XHR_TIMEOUT_MS;
+
+      const onAbort = () => xhr.abort();
+      signal.addEventListener("abort", onAbort);
+      const cleanup = () => signal.removeEventListener("abort", onAbort);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+      xhr.onload = () => {
+        cleanup();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({});
+          return;
+        }
+        let message = `Hochladen fehlgeschlagen (Status ${xhr.status}).`;
+        try {
+          const body = JSON.parse(xhr.responseText) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          // Non-JSON error body — fall back to the status-code message above.
+        }
+        resolve({ error: message });
+      };
+      xhr.onerror = () => {
+        cleanup();
+        resolve({ error: "Netzwerkfehler beim Hochladen. Bitte Verbindung prüfen und erneut versuchen." });
+      };
+      xhr.ontimeout = () => {
+        cleanup();
+        resolve({
+          error: "Zeitüberschreitung beim Hochladen. Bitte besseres WLAN/Empfang versuchen oder erneut probieren.",
+        });
+      };
+      xhr.onabort = () => {
+        cleanup();
+        resolve({ error: "cancelled" });
+      };
+
+      xhr.send(form);
+    })();
+  });
+}
+
+/**
  * Uploads a training video straight from the browser to Supabase Storage,
  * bypassing the server entirely. Videos over the 50 MB cap are compressed
  * in-browser first (480p/H.264); if that still isn't enough, the caller
- * gets a clear error instead of a silently-rejected upload.
+ * gets a clear error instead of a silently-rejected upload. `signal` lets
+ * the caller offer a real cancel button — needed because on iOS Safari a
+ * backgrounded tab can suspend JS timers, so a timeout alone isn't always
+ * enough to get the user unstuck.
  */
 export async function uploadTrainingVideo(
   supabase: SupabaseClient,
   moduleId: string,
   video: File,
   onProgress?: (phase: UploadPhase, ratio: number) => void,
+  signal?: AbortSignal,
 ): Promise<{ path?: string; error?: string }> {
   if (video.size > MAX_SOURCE_BYTES) {
     return { error: videoTooLargeForCompressionMessage(video.size) };
   }
 
+  const abortSignal = signal ?? new AbortController().signal;
+
   try {
-    return await withTimeout(
-      runUpload(supabase, moduleId, video, onProgress),
-      OVERALL_TIMEOUT_MS,
-      "Zeitüberschreitung beim Hochladen. Pruefe deine Verbindung und versuche es mit besserem WLAN/Empfang erneut — oder waehle ein kuerzeres Video.",
-    );
+    return await runUpload(supabase, moduleId, video, onProgress, abortSignal);
   } catch (err) {
+    if (err instanceof UploadCancelledError) return { error: err.message };
     return { error: err instanceof Error ? err.message : "Unbekannter Fehler beim Hochladen." };
   }
 }
@@ -89,15 +196,24 @@ async function runUpload(
   supabase: SupabaseClient,
   moduleId: string,
   video: File,
-  onProgress?: (phase: UploadPhase, ratio: number) => void,
+  onProgress: ((phase: UploadPhase, ratio: number) => void) | undefined,
+  signal: AbortSignal,
 ): Promise<{ path?: string; error?: string }> {
-  let toUpload = video;
+  let toUpload: Blob = video;
+  const sourceName = video.name;
 
-  if (video.size > MAX_VIDEO_BYTES) {
+  if (signal.aborted) throw new UploadCancelledError();
+
+  if (video.size > COMPRESS_THRESHOLD_BYTES) {
     onProgress?.("preparing", 0);
     try {
-      toUpload = await compressVideo(video, (ratio) => onProgress?.("compressing", ratio));
-    } catch {
+      toUpload = await withTimeout(
+        compressVideo(video, (ratio) => onProgress?.("compressing", ratio), signal),
+        PHASE_TIMEOUT_MS,
+        "Komprimierung dauert ungewöhnlich lange (Verbindung zu langsam oder Video zu groß). Bitte erneut versuchen oder ein kürzeres Video wählen.",
+      );
+    } catch (err) {
+      if (signal.aborted || err instanceof UploadCancelledError) throw new UploadCancelledError();
       return {
         error: "Komprimierung im Browser fehlgeschlagen. Bitte Video manuell verkleinern oder ein kürzeres Video wählen.",
       };
@@ -110,19 +226,30 @@ async function runUpload(
     }
   }
 
-  onProgress?.("uploading", 0);
-  const path = `${moduleId}/${slugify(toUpload.name || "video")}-${Date.now()}`;
-  const { error } = await supabase.storage
-    .from("training-videos")
-    .upload(path, toUpload, { contentType: toUpload.type || "video/mp4" });
+  if (signal.aborted) throw new UploadCancelledError();
 
+  onProgress?.("uploading", 0);
+  const path = `${moduleId}/${slugify(sourceName || "video")}-${Date.now()}`;
+  const { error } = await uploadWithProgress(
+    supabase,
+    "training-videos",
+    path,
+    toUpload,
+    (ratio) => onProgress?.("uploading", ratio),
+    signal,
+  );
+
+  if (error === "cancelled") throw new UploadCancelledError();
   if (error) {
-    const tooLarge = /payload too large|exceeded the maximum allowed size|too large|entitytoolarge/i.test(
-      error.message,
-    );
-    return { error: tooLarge ? videoTooLargeMessage(toUpload.size) : error.message };
+    const tooLarge = /payload too large|exceeded the maximum allowed size|too large|entitytoolarge/i.test(error);
+    return { error: tooLarge ? videoTooLargeMessage(toUpload.size) : error };
   }
 
   onProgress?.("uploading", 1);
   return { path };
+}
+
+/** Best-effort teardown for a cancelled upload — frees the ffmpeg worker if one was running. */
+export function cancelTrainingVideoUpload() {
+  terminateCompressor();
 }

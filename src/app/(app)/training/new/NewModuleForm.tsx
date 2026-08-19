@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   uploadTrainingVideo,
   uploadProgressLabel,
+  cancelTrainingVideoUpload,
   MAX_SOURCE_BYTES,
   videoTooLargeForCompressionMessage,
 } from "../shared/videoUpload";
@@ -18,6 +19,7 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Wird gespeichert…");
   const fileRef = useRef<HTMLInputElement>(null);
+  const controllerRef = useRef<AbortController | null>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
@@ -51,9 +53,17 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     }
 
     if (video && video.size > 0) {
-      const uploadResult = await uploadTrainingVideo(supabase, result.id, video, (phase, ratio) =>
-        setBusyLabel(uploadProgressLabel(phase, ratio, "Video wird hochgeladen…")),
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
+      const uploadResult = await uploadTrainingVideo(
+        supabase,
+        result.id,
+        video,
+        (phase, ratio) => setBusyLabel(uploadProgressLabel(phase, ratio, "Video wird hochgeladen…")),
+        controller.signal,
       );
+      controllerRef.current = null;
       if (uploadResult.error || !uploadResult.path) {
         setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
         setBusy(false);
@@ -69,6 +79,14 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     }
 
     router.push(`/training/${result.id}`);
+  }
+
+  function handleCancel() {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    cancelTrainingVideoUpload();
+    setBusy(false);
+    setError("Hochladen abgebrochen.");
   }
 
   return (
@@ -107,9 +125,16 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
         </p>
       </div>
       {error && <p className="text-sm text-warn">{error}</p>}
-      <Button type="submit" disabled={busy} className="w-full">
-        {busy ? busyLabel : "Modul anlegen"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" disabled={busy} className="flex-1">
+          {busy ? busyLabel : "Modul anlegen"}
+        </Button>
+        {busy && (
+          <Button type="button" variant="ghost" onClick={handleCancel}>
+            Abbrechen
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

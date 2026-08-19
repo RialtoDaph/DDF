@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { attachModuleVideo } from "../actions";
 import { createClient } from "@/lib/supabase/client";
-import { uploadTrainingVideo, uploadProgressLabel } from "../shared/videoUpload";
+import { uploadTrainingVideo, uploadProgressLabel, cancelTrainingVideoUpload } from "../shared/videoUpload";
 import { Button } from "@/components/ui/Button";
 
 export function AddVideoForm({ moduleId }: { moduleId: string }) {
@@ -12,6 +12,7 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Wird hochgeladen…");
   const fileRef = useRef<HTMLInputElement>(null);
+  const controllerRef = useRef<AbortController | null>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
@@ -27,10 +28,17 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
 
     setBusy(true);
     setBusyLabel("Wird hochgeladen…");
+    const controller = new AbortController();
+    controllerRef.current = controller;
 
-    const uploadResult = await uploadTrainingVideo(supabase, moduleId, video, (phase, ratio) =>
-      setBusyLabel(uploadProgressLabel(phase, ratio, "Wird hochgeladen…")),
+    const uploadResult = await uploadTrainingVideo(
+      supabase,
+      moduleId,
+      video,
+      (phase, ratio) => setBusyLabel(uploadProgressLabel(phase, ratio, "Wird hochgeladen…")),
+      controller.signal,
     );
+    controllerRef.current = null;
     if (uploadResult.error || !uploadResult.path) {
       setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
       setBusy(false);
@@ -47,6 +55,14 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
     router.refresh();
   }
 
+  function handleCancel() {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    cancelTrainingVideoUpload();
+    setBusy(false);
+    setError("Hochladen abgebrochen.");
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <input
@@ -57,9 +73,16 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
       />
       <p className="text-xs text-parchment-dim">Videos über 50 MB werden vor dem Hochladen automatisch komprimiert.</p>
       {error && <p className="text-sm text-warn">{error}</p>}
-      <Button type="submit" variant="secondary" disabled={busy}>
-        {busy ? busyLabel : "Video hochladen"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="submit" variant="secondary" disabled={busy}>
+          {busy ? busyLabel : "Video hochladen"}
+        </Button>
+        {busy && (
+          <Button type="button" variant="ghost" onClick={handleCancel}>
+            Abbrechen
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

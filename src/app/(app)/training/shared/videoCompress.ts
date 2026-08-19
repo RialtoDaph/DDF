@@ -32,9 +32,28 @@ async function getFFmpeg(): Promise<FFmpeg> {
   return loadPromise;
 }
 
+/**
+ * Hard-kills the compressor worker (used for a user-initiated cancel — there
+ * is no clean "stop" for an in-flight exec()). The next compressVideo() call
+ * transparently spins up a fresh instance.
+ */
+export function terminateCompressor() {
+  ffmpegInstance?.terminate();
+  ffmpegInstance = null;
+  loadPromise = null;
+}
+
 /** Transcodes a video down to 480p/CRF 30 H.264 to shrink it for upload. */
-export async function compressVideo(file: File, onProgress?: (ratio: number) => void): Promise<File> {
+export async function compressVideo(
+  file: File,
+  onProgress?: (ratio: number) => void,
+  signal?: AbortSignal,
+): Promise<File> {
   const ffmpeg = await getFFmpeg();
+
+  if (signal?.aborted) throw new Error("cancelled");
+  const onAbort = () => terminateCompressor();
+  signal?.addEventListener("abort", onAbort);
 
   const progressHandler = ({ progress }: { progress: number }) => {
     if (Number.isFinite(progress)) onProgress?.(Math.min(1, Math.max(0, progress)));
@@ -73,8 +92,16 @@ export async function compressVideo(file: File, onProgress?: (ratio: number) => 
     const compressedName = `${file.name.replace(/\.[^./]+$/, "")}-compressed.mp4`;
     return new File([blob], compressedName, { type: "video/mp4" });
   } finally {
-    ffmpeg.off("progress", progressHandler);
-    await ffmpeg.deleteFile(inputName).catch(() => {});
-    await ffmpeg.deleteFile(outputName).catch(() => {});
+    signal?.removeEventListener("abort", onAbort);
+    // A cancel mid-exec() tears the instance down via terminateCompressor(),
+    // so these calls would throw against the now-dead worker — cleanup
+    // failing doesn't matter once the operation itself has been abandoned.
+    try {
+      ffmpeg.off("progress", progressHandler);
+      await ffmpeg.deleteFile(inputName).catch(() => {});
+      await ffmpeg.deleteFile(outputName).catch(() => {});
+    } catch {
+      // Ignored — see comment above.
+    }
   }
 }
