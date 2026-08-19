@@ -8,6 +8,7 @@ const ACTION_LABEL: Record<string, string> = {
   stock_adjustment: "Bestandskorrektur",
   checklist_approved: "Checkliste freigegeben",
   user_updated: "Benutzer geändert",
+  inventory_item_delete: "Artikel gelöscht",
 };
 
 export default async function AuditLogPage() {

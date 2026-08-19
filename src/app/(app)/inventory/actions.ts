@@ -104,3 +104,21 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
   revalidatePath("/inventory");
   return { success: true };
 }
+
+export async function deleteItem(itemId: string) {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) {
+    return { error: "Keine Berechtigung." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("inventory_items").delete().eq("id", itemId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  await logAudit(supabase, profile.id, "inventory_item_delete", "inventory_items", { item_id: itemId });
+
+  revalidatePath("/inventory");
+  redirect("/inventory");
+}

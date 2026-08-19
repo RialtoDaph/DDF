@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { updateItem } from "../actions";
+import { useActionState, useState, useTransition } from "react";
+import { updateItem, deleteItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import type { ItemCategory } from "@/lib/database.types";
@@ -23,6 +23,23 @@ export function EditItemForm({
   };
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateItem, initialActionState);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePending, startDelete] = useTransition();
+
+  function handleDelete() {
+    if (
+      !window.confirm(
+        `"${item.name}" wirklich löschen? Der gesamte Bestandsverlauf dieses Artikels wird ebenfalls unwiderruflich gelöscht, und der Artikel verschwindet aus jedem Rezept, das ihn verwendet.`,
+      )
+    ) {
+      return;
+    }
+    setDeleteError(null);
+    startDelete(async () => {
+      const result = await deleteItem(item.id);
+      if (result?.error) setDeleteError(result.error);
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-3">
@@ -92,6 +109,12 @@ export function EditItemForm({
       <Button type="submit" variant="secondary" disabled={pending} className="w-full">
         {pending ? "Wird gespeichert…" : "Stammdaten speichern"}
       </Button>
+      <div className="pt-2 border-t border-ink-border">
+        {deleteError && <p className="text-sm text-warn mb-2">{deleteError}</p>}
+        <Button type="button" variant="danger" disabled={deletePending} onClick={handleDelete} className="w-full">
+          {deletePending ? "Wird gelöscht…" : "Artikel löschen"}
+        </Button>
+      </div>
     </form>
   );
 }
