@@ -33,6 +33,18 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
 
   if (!moduleData) notFound();
 
+  let ingredients: { recipeId: string; amount: number; name: string; unit: string }[] = [];
+  if (moduleData.menu_item_id) {
+    const { data: recipes } = await supabase
+      .from("recipes")
+      .select("id, amount, inventory_items(name, unit)")
+      .eq("menu_item_id", moduleData.menu_item_id);
+    ingredients = (recipes ?? []).map((r) => {
+      const item = r.inventory_items as unknown as { name: string; unit: string } | null;
+      return { recipeId: r.id, amount: r.amount, name: item?.name ?? "—", unit: item?.unit ?? "" };
+    });
+  }
+
   let videoUrl: string | null = null;
   if (moduleData.video_url) {
     const { data } = await supabase.storage.from("training-videos").createSignedUrl(moduleData.video_url, 3600);
@@ -63,29 +75,54 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
         {myProgress?.status === "passed" && <StampBadge>Bestanden</StampBadge>}
       </div>
 
-      {moduleData.description && <p className="text-sm text-parchment-dim">{moduleData.description}</p>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="space-y-4">
+          {videoUrl && (
+            <Card>
+              <video src={videoUrl} controls className="mx-auto block max-h-[60vh] w-auto max-w-full rounded-md" />
+            </Card>
+          )}
 
-      {videoUrl && (
-        <Card>
-          <video src={videoUrl} controls className="mx-auto block max-h-[70vh] w-auto max-w-full rounded-md" />
-        </Card>
-      )}
+          {!videoUrl && canManage && (
+            <Card>
+              <CardHeader title="Video hinzufügen" />
+              <AddVideoForm moduleId={id} />
+            </Card>
+          )}
+        </div>
 
-      {!videoUrl && canManage && (
-        <Card>
-          <CardHeader title="Video hinzufügen" />
-          <AddVideoForm moduleId={id} />
-        </Card>
-      )}
+        <div className="space-y-4">
+          {(moduleData.description || ingredients.length > 0) && (
+            <Card>
+              {moduleData.description && <p className="text-sm text-parchment-dim">{moduleData.description}</p>}
+              {ingredients.length > 0 && (
+                <div className={moduleData.description ? "mt-4" : undefined}>
+                  <CardHeader title="Rezept" />
+                  <ul className="divide-y divide-ink-border">
+                    {ingredients.map((i) => (
+                      <li key={i.recipeId} className="flex items-center justify-between py-1.5 text-sm">
+                        <span className="text-parchment">{i.name}</span>
+                        <span className="text-parchment-dim tabular">
+                          {i.amount} {i.unit}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
 
-      <Card>
-        <CardHeader title="Quiz" subtitle="Ab 80% bestanden" />
-        {questions && questions.length > 0 ? (
-          <QuizPlayer moduleId={id} questions={questions as unknown as PlayerQuestion[]} />
-        ) : (
-          <p className="text-sm text-parchment-dim">Noch kein Quiz hinterlegt.</p>
-        )}
-      </Card>
+          <Card>
+            <CardHeader title="Quiz" subtitle="Ab 80% bestanden" />
+            {questions && questions.length > 0 ? (
+              <QuizPlayer moduleId={id} questions={questions as unknown as PlayerQuestion[]} />
+            ) : (
+              <p className="text-sm text-parchment-dim">Noch kein Quiz hinterlegt.</p>
+            )}
+          </Card>
+        </div>
+      </div>
 
       {canManage && (
         <Card>
