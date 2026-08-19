@@ -101,7 +101,12 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
         <div className="space-y-4">
           {(moduleData.description || ingredients.length > 0) && (
             <Card>
-              {moduleData.description && <p className="text-sm text-parchment-dim">{moduleData.description}</p>}
+              {moduleData.description && (
+                <div>
+                  <CardHeader title="Geschichte" />
+                  <p className="text-sm text-parchment-dim leading-relaxed whitespace-pre-line">{moduleData.description}</p>
+                </div>
+              )}
               {ingredients.length > 0 && (
                 <div className={moduleData.description ? "mt-4" : undefined}>
                   <CardHeader title="Rezept" />
