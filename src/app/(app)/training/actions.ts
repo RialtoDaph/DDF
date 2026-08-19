@@ -39,6 +39,32 @@ export async function createModuleRecord(
   return { id: module_.id };
 }
 
+export async function updateModuleRecord(_prevState: unknown, formData: FormData) {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) {
+    return { error: "Keine Berechtigung." };
+  }
+
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return { error: "Titel ist erforderlich." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("training_modules")
+    .update({
+      title,
+      description: String(formData.get("description") ?? "") || null,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/training/${id}`);
+  revalidatePath("/training");
+  return { success: true };
+}
+
 export async function attachModuleVideo(moduleId: string, path: string): Promise<{ error?: string }> {
   const profile = await requireProfile();
   if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };

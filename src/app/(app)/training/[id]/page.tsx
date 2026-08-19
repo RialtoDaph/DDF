@@ -6,6 +6,7 @@ import { StampBadge } from "@/components/ui/StampBadge";
 import { QuizPlayer } from "./QuizPlayer";
 import { QuizBuilder } from "./QuizBuilder";
 import { AddVideoForm } from "./AddVideoForm";
+import { EditModuleForm } from "./EditModuleForm";
 
 interface PlayerQuestion {
   id: string;
@@ -74,6 +75,12 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
         </div>
         {myProgress?.status === "passed" && <StampBadge>Bestanden</StampBadge>}
       </div>
+
+      {canManage && (
+        <Card>
+          <EditModuleForm module_={{ id, title: moduleData.title, description: moduleData.description }} />
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4">
