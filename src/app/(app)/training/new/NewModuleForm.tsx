@@ -51,7 +51,14 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
         .upload(path, video, { contentType: video.type || "video/mp4" });
 
       if (uploadError) {
-        setError(uploadError.message);
+        const tooLarge = /payload too large|exceeded the maximum allowed size|too large|entitytoolarge/i.test(
+          uploadError.message,
+        );
+        setError(
+          tooLarge
+            ? `Video ist zu groß (${(video.size / (1024 * 1024)).toFixed(0)} MB) fürs Hochladen. Bitte komprimieren/kürzen oder das Upload-Limit im Supabase-Projekt erhöhen.`
+            : uploadError.message,
+        );
         setBusy(false);
         return;
       }
