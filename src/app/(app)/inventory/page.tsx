@@ -15,6 +15,7 @@ const CATEGORIES: { value: ItemCategory | "all"; label: string }[] = [
   { value: "mixer", label: "Mixer" },
   { value: "garnish", label: "Garnitur" },
   { value: "herbs_produce", label: "Frische Kräuter & Früchte" },
+  { value: "juice", label: "Saft" },
   { value: "consumable", label: "Verbrauch" },
 ];
 

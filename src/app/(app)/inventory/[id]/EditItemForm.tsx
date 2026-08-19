@@ -59,6 +59,7 @@ export function EditItemForm({
             <option value="mixer">Mixer</option>
             <option value="garnish">Garnitur</option>
             <option value="herbs_produce">Frische Kräuter & Früchte</option>
+            <option value="juice">Saft</option>
             <option value="consumable">Verbrauch</option>
           </Select>
         </div>
