@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
@@ -30,6 +30,17 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const navGroups = navForRole(profile.role);
+
+  // Without this the page behind the mobile drawer scrolls right along with
+  // it (especially on iOS Safari) — lock the body while the overlay is open.
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [open]);
 
   return (
     <div className="flex min-h-screen">
@@ -106,7 +117,7 @@ function SidebarContent({
         <p className="text-[0.6rem] tracking-[0.25em] uppercase text-parchment-dim mt-3">Bar-Management</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-3">
+      <nav className="flex-1 overflow-y-auto overscroll-contain py-3 px-2 space-y-3">
         {navGroups.map((group, i) => (
           <div key={group.label ?? `group-${i}`} className="space-y-0.5">
             {group.label && (
