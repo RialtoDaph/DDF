@@ -67,7 +67,7 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
 
       {videoUrl && (
         <Card>
-          <video src={videoUrl} controls className="w-full rounded-md" />
+          <video src={videoUrl} controls className="mx-auto block max-h-[70vh] w-auto max-w-full rounded-md" />
         </Card>
       )}
 
