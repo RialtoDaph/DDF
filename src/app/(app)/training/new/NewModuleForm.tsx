@@ -4,14 +4,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createModuleRecord, attachModuleVideo } from "../actions";
 import { createClient } from "@/lib/supabase/client";
-import { uploadTrainingVideo, type UploadPhase } from "../shared/videoUpload";
+import {
+  uploadTrainingVideo,
+  uploadProgressLabel,
+  MAX_SOURCE_BYTES,
+  videoTooLargeForCompressionMessage,
+} from "../shared/videoUpload";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-
-function progressLabel(phase: UploadPhase, ratio: number) {
-  const pct = Math.round(ratio * 100);
-  return phase === "compressing" ? `Video wird komprimiert… ${pct}%` : "Video wird hochgeladen…";
-}
 
 export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: string }[] }) {
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +25,18 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     e.preventDefault();
     const form = e.currentTarget;
     setError(null);
+
+    // Check up front so a video that could never succeed (even after
+    // compression) is caught before the module row is even created,
+    // instead of failing partway through with an orphaned module.
+    const video = fileRef.current?.files?.[0];
+    if (video && video.size > MAX_SOURCE_BYTES) {
+      setError(videoTooLargeForCompressionMessage(video.size));
+      return;
+    }
+
     setBusy(true);
     setBusyLabel("Wird gespeichert…");
-
-    const video = fileRef.current?.files?.[0];
 
     const textData = new FormData();
     textData.set("title", (form.elements.namedItem("title") as HTMLInputElement).value);
@@ -44,7 +52,7 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
 
     if (video && video.size > 0) {
       const uploadResult = await uploadTrainingVideo(supabase, result.id, video, (phase, ratio) =>
-        setBusyLabel(progressLabel(phase, ratio)),
+        setBusyLabel(uploadProgressLabel(phase, ratio, "Video wird hochgeladen…")),
       );
       if (uploadResult.error || !uploadResult.path) {
         setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");

@@ -1,12 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile, canManageMasterData, canApprove } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import {
   getOrCreateSubmission,
   signedPhotoUrl,
   isChecklistType,
   periodStartFor,
   periodLabel,
+  CHECKLIST_TYPES,
   CHECKLIST_LABEL,
 } from "../shared/lib";
 import { ChecklistSections, type ItemResultMap } from "../shared/ChecklistSections";
@@ -24,6 +27,25 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
   const profile = await requireProfile();
   const label = CHECKLIST_LABEL[type];
+
+  const tabs = (
+    <div className="flex gap-1 border-b border-ink-border overflow-x-auto">
+      {CHECKLIST_TYPES.map((t) => (
+        <Link
+          key={t}
+          href={`/checklists/${t}`}
+          className={cn(
+            "px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors",
+            t === type
+              ? "border-wine text-wine"
+              : "border-transparent text-parchment-dim hover:text-parchment",
+          )}
+        >
+          {CHECKLIST_LABEL[t]}
+        </Link>
+      ))}
+    </div>
+  );
 
   if (!profile.outlet_id) {
     return <Card>Kein Standort zugeordnet. Bitte an einen Owner wenden.</Card>;
@@ -43,6 +65,7 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
   if (!template) {
     return (
       <div className="space-y-4">
+        {tabs}
         <h1 className="font-serif text-2xl text-parchment">{label}</h1>
         <Card>
           <p className="text-sm text-parchment-dim mb-3">Fuer diesen Standort ist noch keine Vorlage angelegt.</p>
@@ -83,6 +106,7 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
   return (
     <div className="space-y-6 pb-24">
+      {tabs}
       <div>
         <h1 className="font-serif text-2xl md:text-3xl text-parchment">{label}</h1>
         <p className="text-sm text-parchment-dim mt-1">{periodLabel(type, submission.period_start)}</p>

@@ -4,13 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { attachModuleVideo } from "../actions";
 import { createClient } from "@/lib/supabase/client";
-import { uploadTrainingVideo, type UploadPhase } from "../shared/videoUpload";
+import { uploadTrainingVideo, uploadProgressLabel } from "../shared/videoUpload";
 import { Button } from "@/components/ui/Button";
-
-function progressLabel(phase: UploadPhase, ratio: number) {
-  const pct = Math.round(ratio * 100);
-  return phase === "compressing" ? `Video wird komprimiert… ${pct}%` : "Wird hochgeladen…";
-}
 
 export function AddVideoForm({ moduleId }: { moduleId: string }) {
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +29,7 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
     setBusyLabel("Wird hochgeladen…");
 
     const uploadResult = await uploadTrainingVideo(supabase, moduleId, video, (phase, ratio) =>
-      setBusyLabel(progressLabel(phase, ratio)),
+      setBusyLabel(uploadProgressLabel(phase, ratio, "Wird hochgeladen…")),
     );
     if (uploadResult.error || !uploadResult.path) {
       setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
