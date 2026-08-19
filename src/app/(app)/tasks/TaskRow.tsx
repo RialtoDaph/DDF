@@ -1,12 +1,12 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { setTaskStatus, updateTask } from "./actions";
+import { setTaskStatus, updateTask, deleteTask } from "./actions";
 import { StampBadge } from "@/components/ui/StampBadge";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TaskStatus } from "@/lib/database.types";
 
@@ -45,6 +45,13 @@ export function TaskRow({
 
   function toggle() {
     startTransition(() => setTaskStatus(task.id, done ? "open" : "done"));
+  }
+
+  function remove() {
+    if (!window.confirm(`"${task.title}" wirklich loeschen?`)) return;
+    startTransition(() => {
+      deleteTask(task.id);
+    });
   }
 
   const overdue = !done && task.due_date && new Date(task.due_date) < new Date(new Date().toDateString());
@@ -137,13 +144,23 @@ export function TaskRow({
         </div>
       </div>
       {canEdit && (
-        <button
-          onClick={() => setEditing(true)}
-          aria-label="Aufgabe bearbeiten"
-          className="text-parchment-dim hover:text-wine shrink-0 p-1"
-        >
-          <Pencil size={14} />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setEditing(true)}
+            aria-label="Aufgabe bearbeiten"
+            className="text-parchment-dim hover:text-wine p-1"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={remove}
+            disabled={pending}
+            aria-label="Aufgabe loeschen"
+            className="text-parchment-dim hover:text-warn p-1"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       )}
       {done && <StampBadge>Erledigt</StampBadge>}
     </li>

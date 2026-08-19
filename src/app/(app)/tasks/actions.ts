@@ -65,6 +65,19 @@ export async function updateTask(_prevState: unknown, formData: FormData) {
   return { success: true };
 }
 
+export async function deleteTask(taskId: string) {
+  const profile = await requireProfile();
+  if (!canAssignTasks(profile.role)) return { error: "Keine Berechtigung." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  return {};
+}
+
 export async function setTaskStatus(taskId: string, status: TaskStatus) {
   await requireProfile();
   const supabase = await createClient();
