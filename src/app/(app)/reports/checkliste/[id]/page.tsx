@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { signedPhotoUrl } from "@/app/(app)/checklists/shared/lib";
+import { signedPhotoUrl, CHECKLIST_LABEL, periodLabel } from "@/app/(app)/checklists/shared/lib";
+import type { ChecklistType } from "@/lib/database.types";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StampBadge } from "@/components/ui/StampBadge";
 import { formatDate, formatTimestamp } from "@/lib/utils";
@@ -14,11 +15,18 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
   const supabase = await createClient();
   const { data: submission } = await supabase
     .from("checklist_submissions")
-    .select("id, date, shift, cash_count, incident_notes, status, users(name)")
+    .select(
+      "id, date, period_start, shift, cash_count, incident_notes, status, users(name), checklist_templates(name)",
+    )
     .eq("id", id)
     .single();
 
   if (!submission) notFound();
+
+  const type = (submission.checklist_templates as unknown as { name: ChecklistType } | null)?.name;
+  const heading = type
+    ? `${CHECKLIST_LABEL[type]} — ${periodLabel(type, submission.period_start)}`
+    : `Checkliste — ${formatDate(submission.date)}`;
 
   const { data: results } = await supabase
     .from("checklist_item_results")
@@ -36,9 +44,7 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">
-            Closing — {formatDate(submission.date)}
-          </h1>
+          <h1 className="font-serif text-2xl md:text-3xl text-parchment">{heading}</h1>
           <p className="text-sm text-parchment-dim mt-1">
             {(submission.users as unknown as { name: string } | null)?.name}
             {submission.shift ? ` · ${submission.shift}` : ""}
@@ -60,7 +66,7 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
       )}
 
       <Card>
-        <CardHeader title="Checkliste &amp; Round Check" />
+        <CardHeader title={type === "closing" ? "Checkliste & Round Check" : "Checkliste"} />
         <ul className="divide-y divide-ink-border">
           {withUrls.map((r) => (
             <li key={r.id} className="py-3">

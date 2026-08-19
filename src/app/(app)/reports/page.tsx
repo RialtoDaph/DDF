@@ -6,7 +6,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { GaugeBar } from "@/components/ui/GaugeBar";
 import { StampBadge } from "@/components/ui/StampBadge";
 import { CsvExportButton } from "@/components/reports/CsvExportButton";
+import { CHECKLIST_LABEL, periodLabel } from "@/app/(app)/checklists/shared/lib";
 import { formatDate } from "@/lib/utils";
+import type { ChecklistType } from "@/lib/database.types";
 
 export default async function ReportsPage() {
   const profile = await requireProfile();
@@ -31,11 +33,10 @@ export default async function ReportsPage() {
       supabase.from("tasks").select("assigned_to, status, users(name)"),
       supabase
         .from("checklist_submissions")
-        .select("id, date, status, users(name), checklist_templates!inner(name)")
-        .eq("checklist_templates.name", "closing")
+        .select("id, period_start, status, users(name), checklist_templates!inner(name)")
         .in("status", ["submitted", "approved"])
-        .order("date", { ascending: false })
-        .limit(30),
+        .order("period_start", { ascending: false })
+        .limit(60),
     ]);
 
   const costByMenuItem = new Map<string, number>();
@@ -179,19 +180,33 @@ export default async function ReportsPage() {
       </Card>
 
       <Card>
-        <CardHeader title="Closing-Verlauf" subtitle="Inkl. Fotos aus dem Round Check" />
+        <CardHeader
+          title="Checklisten-Archiv"
+          subtitle="Eingereichte Opening-, Closing-, Wochen- und Monatsberichte inkl. Fotos"
+        />
         {!closings || closings.length === 0 ? (
-          <p className="text-sm text-parchment-dim">Noch keine Closing-Berichte eingereicht.</p>
+          <p className="text-sm text-parchment-dim">Noch keine Checklisten eingereicht.</p>
         ) : (
           <ul className="divide-y divide-ink-border">
-            {closings.map((c) => (
-              <li key={c.id} className="flex items-center justify-between py-2 text-sm">
-                <Link href={`/reports/closing/${c.id}`} className="text-parchment hover:text-wine">
-                  {formatDate(c.date)} — {(c.users as unknown as { name: string } | null)?.name}
-                </Link>
-                {c.status === "approved" ? <StampBadge>Freigegeben</StampBadge> : <StampBadge variant="warn">Eingereicht</StampBadge>}
-              </li>
-            ))}
+            {closings.map((c) => {
+              const type = (c.checklist_templates as unknown as { name: ChecklistType } | null)?.name;
+              return (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <Link href={`/reports/checkliste/${c.id}`} className="min-w-0 text-parchment hover:text-wine">
+                    <span className="text-wine">{type ? CHECKLIST_LABEL[type] : "Checkliste"}</span>
+                    {" · "}
+                    {type ? periodLabel(type, c.period_start) : c.period_start}
+                    {" — "}
+                    {(c.users as unknown as { name: string } | null)?.name}
+                  </Link>
+                  {c.status === "approved" ? (
+                    <StampBadge>Freigegeben</StampBadge>
+                  ) : (
+                    <StampBadge variant="warn">Eingereicht</StampBadge>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>
