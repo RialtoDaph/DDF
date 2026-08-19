@@ -102,6 +102,11 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath("/inventory");
+  // Cocktail cost/margin on Menu & Rezepte reads this item's price/unit
+  // through its recipe rows — without this, editing an ingredient's price
+  // leaves every menu item using it showing a stale cost until something
+  // else happens to revalidate that page.
+  revalidatePath("/menu", "layout");
   return { success: true };
 }
 
@@ -120,5 +125,6 @@ export async function deleteItem(itemId: string) {
   await logAudit(supabase, profile.id, "inventory_item_delete", "inventory_items", { item_id: itemId });
 
   revalidatePath("/inventory");
+  revalidatePath("/menu", "layout");
   redirect("/inventory");
 }
