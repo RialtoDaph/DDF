@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -120,21 +121,26 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
                       </li>
                     ))}
                   </ul>
+                  {canManage && moduleData.menu_item_id && (
+                    <Link href={`/menu/${moduleData.menu_item_id}`} className="text-xs text-wine-soft hover:underline mt-3 inline-block">
+                      Vollständiges Rezept &amp; Kalkulation ansehen →
+                    </Link>
+                  )}
                 </div>
               )}
             </Card>
           )}
-
-          <Card>
-            <CardHeader title="Quiz" subtitle="Ab 80% bestanden" />
-            {questions && questions.length > 0 ? (
-              <QuizPlayer moduleId={id} questions={questions as unknown as PlayerQuestion[]} />
-            ) : (
-              <p className="text-sm text-parchment-dim">Noch kein Quiz hinterlegt.</p>
-            )}
-          </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader title="Quiz" subtitle="Ab 80% bestanden" />
+        {questions && questions.length > 0 ? (
+          <QuizPlayer moduleId={id} questions={questions as unknown as PlayerQuestion[]} />
+        ) : (
+          <p className="text-sm text-parchment-dim">Noch kein Quiz hinterlegt.</p>
+        )}
+      </Card>
 
       {canManage && (
         <Card>
