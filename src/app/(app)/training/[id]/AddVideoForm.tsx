@@ -4,12 +4,18 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { attachModuleVideo } from "../actions";
 import { createClient } from "@/lib/supabase/client";
-import { uploadTrainingVideo } from "../shared/videoUpload";
+import { uploadTrainingVideo, type UploadPhase } from "../shared/videoUpload";
 import { Button } from "@/components/ui/Button";
+
+function progressLabel(phase: UploadPhase, ratio: number) {
+  const pct = Math.round(ratio * 100);
+  return phase === "compressing" ? `Video wird komprimiert… ${pct}%` : "Wird hochgeladen…";
+}
 
 export function AddVideoForm({ moduleId }: { moduleId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [busyLabel, setBusyLabel] = useState("Wird hochgeladen…");
   const fileRef = useRef<HTMLInputElement>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
@@ -25,7 +31,11 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
     }
 
     setBusy(true);
-    const uploadResult = await uploadTrainingVideo(supabase, moduleId, video);
+    setBusyLabel("Wird hochgeladen…");
+
+    const uploadResult = await uploadTrainingVideo(supabase, moduleId, video, (phase, ratio) =>
+      setBusyLabel(progressLabel(phase, ratio)),
+    );
     if (uploadResult.error || !uploadResult.path) {
       setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
       setBusy(false);
@@ -50,9 +60,10 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
         accept="video/*"
         className="block w-full text-sm text-parchment-dim file:mr-3 file:rounded-md file:border-0 file:bg-wine file:px-3 file:py-2 file:text-ink file:text-sm"
       />
+      <p className="text-xs text-parchment-dim">Videos über 50 MB werden vor dem Hochladen automatisch komprimiert.</p>
       {error && <p className="text-sm text-warn">{error}</p>}
       <Button type="submit" variant="secondary" disabled={busy}>
-        {busy ? "Wird hochgeladen…" : "Video hochladen"}
+        {busy ? busyLabel : "Video hochladen"}
       </Button>
     </form>
   );

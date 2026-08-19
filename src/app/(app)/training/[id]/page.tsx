@@ -73,7 +73,7 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
 
       {!videoUrl && canManage && (
         <Card>
-          <CardHeader title="Video hinzufügen" subtitle="Max. 50 MB" />
+          <CardHeader title="Video hinzufügen" />
           <AddVideoForm moduleId={id} />
         </Card>
       )}
