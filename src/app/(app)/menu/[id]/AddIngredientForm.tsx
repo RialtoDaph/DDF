@@ -12,7 +12,7 @@ export function AddIngredientForm({
   items,
 }: {
   menuItemId: string;
-  items: { id: string; name: string; unit: string }[];
+  items: { id: string; name: string; unit: string; unit_volume_ml: number | null }[];
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addIngredient, initialActionState);
   const [selectedId, setSelectedId] = useState("");
@@ -21,8 +21,13 @@ export function AddIngredientForm({
   // Recipe amounts are always stored in the ingredient's own unit, whatever
   // that is — the helper field below is just a smaller-unit calculator for
   // the person typing, converted before it ever reaches the base field.
-  const selectedUnit = items.find((i) => i.id === selectedId)?.unit ?? "";
-  const helper = RECIPE_AMOUNT_HELPERS[selectedUnit.trim().toLowerCase()];
+  const selectedItem = items.find((i) => i.id === selectedId);
+  const selectedUnit = selectedItem?.unit ?? "";
+  const staticHelper = RECIPE_AMOUNT_HELPERS[selectedUnit.trim().toLowerCase()];
+  // A count unit (Flasche, Kiste, ...) with a known bottle size lets us
+  // offer "oder ml" too — pouring 50 ml of a 700 ml bottle is 50/700
+  // Flasche, which nobody wants to type by hand.
+  const helper = staticHelper ?? (selectedItem?.unit_volume_ml ? { label: "ml", factor: 1 / selectedItem.unit_volume_ml } : null);
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
@@ -52,8 +57,8 @@ export function AddIngredientForm({
           id="amount"
           name="amount"
           type="number"
-          step="0.001"
-          min="0.001"
+          step="0.0001"
+          min="0.0001"
           required
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
@@ -67,7 +72,7 @@ export function AddIngredientForm({
             type="number"
             step="0.01"
             min="0.01"
-            placeholder={`z. B. 5`}
+            placeholder="z. B. 5"
             onChange={(e) => setAmount(e.target.value ? String(Number(e.target.value) * helper.factor) : "")}
           />
         </div>
