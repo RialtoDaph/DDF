@@ -4,22 +4,9 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createModuleRecord, attachModuleVideo } from "../actions";
 import { createClient } from "@/lib/supabase/client";
+import { MAX_VIDEO_BYTES, videoTooLargeMessage, uploadTrainingVideo } from "../shared/videoUpload";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 60);
-}
-
-// Supabase's Free plan enforces a fixed 50 MB upload limit project-wide,
-// regardless of the training-videos bucket's own (larger) limit. Check this
-// up front so a too-large video is caught before the module row is even
-// created, instead of failing partway through with an orphaned module.
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
 export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: string }[] }) {
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +21,12 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     const form = e.currentTarget;
     setError(null);
 
+    // Check up front so a too-large video is caught before the module row
+    // is even created, instead of failing partway through with an
+    // orphaned module.
     const video = fileRef.current?.files?.[0];
     if (video && video.size > MAX_VIDEO_BYTES) {
-      setError(
-        `Video ist zu groß (${(video.size / (1024 * 1024)).toFixed(0)} MB). Maximal 50 MB — bitte komprimieren oder kürzen.`,
-      );
+      setError(videoTooLargeMessage(video.size));
       return;
     }
 
@@ -59,25 +47,14 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
 
     if (video && video.size > 0) {
       setBusyLabel("Video wird hochgeladen…");
-      const path = `${result.id}/${slugify(video.name || "video")}-${Date.now()}`;
-      const { error: uploadError } = await supabase.storage
-        .from("training-videos")
-        .upload(path, video, { contentType: video.type || "video/mp4" });
-
-      if (uploadError) {
-        const tooLarge = /payload too large|exceeded the maximum allowed size|too large|entitytoolarge/i.test(
-          uploadError.message,
-        );
-        setError(
-          tooLarge
-            ? `Video ist zu groß (${(video.size / (1024 * 1024)).toFixed(0)} MB) fürs Hochladen. Bitte komprimieren/kürzen oder das Upload-Limit im Supabase-Projekt erhöhen.`
-            : uploadError.message,
-        );
+      const uploadResult = await uploadTrainingVideo(supabase, result.id, video);
+      if (uploadResult.error || !uploadResult.path) {
+        setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
         setBusy(false);
         return;
       }
 
-      const attachResult = await attachModuleVideo(result.id, path);
+      const attachResult = await attachModuleVideo(result.id, uploadResult.path);
       if (attachResult.error) {
         setError(attachResult.error);
         setBusy(false);

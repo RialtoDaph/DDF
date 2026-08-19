@@ -5,6 +5,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StampBadge } from "@/components/ui/StampBadge";
 import { QuizPlayer } from "./QuizPlayer";
 import { QuizBuilder } from "./QuizBuilder";
+import { AddVideoForm } from "./AddVideoForm";
 
 interface PlayerQuestion {
   id: string;
@@ -67,6 +68,13 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
       {videoUrl && (
         <Card>
           <video src={videoUrl} controls className="w-full rounded-md" />
+        </Card>
+      )}
+
+      {!videoUrl && canManage && (
+        <Card>
+          <CardHeader title="Video hinzufügen" subtitle="Max. 50 MB" />
+          <AddVideoForm moduleId={id} />
         </Card>
       )}
 
