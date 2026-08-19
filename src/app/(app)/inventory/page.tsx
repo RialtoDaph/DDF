@@ -14,6 +14,7 @@ const CATEGORIES: { value: ItemCategory | "all"; label: string }[] = [
   { value: "wine", label: "Wein" },
   { value: "mixer", label: "Mixer" },
   { value: "garnish", label: "Garnitur" },
+  { value: "herbs_produce", label: "Frische Kräuter & Früchte" },
   { value: "consumable", label: "Verbrauch" },
 ];
 

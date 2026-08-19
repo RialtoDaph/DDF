@@ -3,7 +3,7 @@
 //   npx supabase gen types typescript --project-id <ref> > src/lib/database.types.ts
 
 export type UserRole = "owner" | "manager" | "staff";
-export type ItemCategory = "spirits" | "beer" | "wine" | "mixer" | "garnish" | "consumable";
+export type ItemCategory = "spirits" | "beer" | "wine" | "mixer" | "garnish" | "herbs_produce" | "consumable";
 export type MovementType = "in" | "out";
 export type MovementReason = "restock" | "usage" | "waste" | "adjustment";
 export type TaskStatus = "open" | "in_progress" | "done";
