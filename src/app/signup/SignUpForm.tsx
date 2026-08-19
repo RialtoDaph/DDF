@@ -35,9 +35,10 @@ export function SignUpForm() {
           name="password"
           type="password"
           required
-          minLength={6}
+          minLength={8}
           autoComplete="new-password"
         />
+        <p className="text-xs text-parchment-dim mt-1">Mindestens 8 Zeichen.</p>
       </div>
       {state?.error && (
         <p className="text-sm text-warn border border-warn/40 bg-warn-soft rounded-md px-3 py-2">{state.error}</p>
