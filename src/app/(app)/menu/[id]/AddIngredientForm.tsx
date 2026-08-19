@@ -18,16 +18,14 @@ export function AddIngredientForm({
   const [selectedId, setSelectedId] = useState("");
   const [amount, setAmount] = useState("");
 
-  // Recipe amounts are always stored in the ingredient's own unit, whatever
-  // that is — the helper field below is just a smaller-unit calculator for
-  // the person typing, converted before it ever reaches the base field.
   const selectedItem = items.find((i) => i.id === selectedId);
-  const selectedUnit = selectedItem?.unit ?? "";
-  const staticHelper = RECIPE_AMOUNT_HELPERS[selectedUnit.trim().toLowerCase()];
-  // A count unit (Flasche, Kiste, ...) with a known bottle size lets us
-  // offer "oder ml" too — pouring 50 ml of a 700 ml bottle is 50/700
-  // Flasche, which nobody wants to type by hand.
-  const helper = staticHelper ?? (selectedItem?.unit_volume_ml ? { label: "ml", factor: 1 / selectedItem.unit_volume_ml } : null);
+  // A recipe amount is stored in ml whenever the ingredient has a known
+  // bottle size — that's what the cost math (purchase_price ÷
+  // unit_volume_ml) assumes — regardless of the item's own stock-counting
+  // unit (Flasche, Kiste, ...). Otherwise it's stored in the item's own
+  // unit directly (kg, l, ...).
+  const effectiveUnit = selectedItem?.unit_volume_ml ? "ml" : (selectedItem?.unit ?? "");
+  const helper = RECIPE_AMOUNT_HELPERS[effectiveUnit.trim().toLowerCase()];
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
@@ -46,19 +44,19 @@ export function AddIngredientForm({
           </option>
           {items.map((i) => (
             <option key={i.id} value={i.id}>
-              {i.name} ({i.unit})
+              {i.name} ({i.unit_volume_ml ? "ml" : i.unit})
             </option>
           ))}
         </Select>
       </div>
       <div className="w-28">
-        <Label htmlFor="amount">Menge{selectedUnit ? ` (${selectedUnit})` : ""}</Label>
+        <Label htmlFor="amount">Menge{effectiveUnit ? ` (${effectiveUnit})` : ""}</Label>
         <Input
           id="amount"
           name="amount"
           type="number"
-          step="0.0001"
-          min="0.0001"
+          step="0.001"
+          min="0.001"
           required
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
