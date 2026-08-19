@@ -8,7 +8,7 @@ export async function PendingApprovals({ templateId, type }: { templateId: strin
   const supabase = await createClient();
   const { data: submissions } = await supabase
     .from("checklist_submissions")
-    .select("id, submitted_at, users(name)")
+    .select("id, submitted_at, users!checklist_submissions_user_id_fkey(name)")
     .eq("template_id", templateId)
     .eq("status", "submitted")
     .order("submitted_at", { ascending: false });

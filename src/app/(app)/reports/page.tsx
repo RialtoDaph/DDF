@@ -30,10 +30,10 @@ export default async function ReportsPage() {
         .limit(50),
       supabase.from("menu_items").select("id, name, sale_price").order("name"),
       supabase.from("recipes").select("menu_item_id, amount, inventory_items(purchase_price)"),
-      supabase.from("tasks").select("assigned_to, status, users(name)"),
+      supabase.from("tasks").select("assigned_to, status, users!tasks_assigned_to_fkey(name)"),
       supabase
         .from("checklist_submissions")
-        .select("id, period_start, status, users(name), checklist_templates!inner(name)")
+        .select("id, period_start, status, users!checklist_submissions_user_id_fkey(name), checklist_templates!inner(name)")
         .in("status", ["submitted", "approved"])
         .order("period_start", { ascending: false })
         .limit(60),

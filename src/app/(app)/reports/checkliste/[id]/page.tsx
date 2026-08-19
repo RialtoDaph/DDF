@@ -16,7 +16,7 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
   const { data: submission } = await supabase
     .from("checklist_submissions")
     .select(
-      "id, date, period_start, shift, cash_count, incident_notes, status, users(name), checklist_templates(name)",
+      "id, date, period_start, shift, cash_count, incident_notes, status, users!checklist_submissions_user_id_fkey(name), checklist_templates(name)",
     )
     .eq("id", id)
     .single();

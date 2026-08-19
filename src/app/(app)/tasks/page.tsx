@@ -12,7 +12,10 @@ export default async function TasksPage() {
   const [{ data: tasks }, { data: users }] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, description, status, due_date, recurrence, assigned_to, users(name)")
+      // tasks has two FKs into users (assigned_to, created_by), so the
+      // embed must name which one — otherwise PostgREST rejects the whole
+      // query as ambiguous and this silently comes back empty.
+      .select("id, title, description, status, due_date, recurrence, assigned_to, users!tasks_assigned_to_fkey(name)")
       .order("status")
       .order("due_date", { ascending: true, nullsFirst: false }),
     canAssign && profile.outlet_id
