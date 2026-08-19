@@ -34,6 +34,37 @@ export async function createTask(_prevState: unknown, formData: FormData) {
   return { success: true };
 }
 
+export async function updateTask(_prevState: unknown, formData: FormData) {
+  const profile = await requireProfile();
+  if (!canAssignTasks(profile.role)) {
+    return { error: "Keine Berechtigung." };
+  }
+
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  if (!id || !title) return { error: "Titel ist erforderlich." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({
+      title,
+      description: String(formData.get("description") ?? "") || null,
+      assigned_to: String(formData.get("assigned_to") ?? "") || null,
+      due_date: formData.get("due_date") ? String(formData.get("due_date")) : null,
+      recurrence: (formData.get("recurrence") as RecurrenceType) ?? "none",
+    })
+    .eq("id", id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 export async function setTaskStatus(taskId: string, status: TaskStatus) {
   await requireProfile();
   const supabase = await createClient();

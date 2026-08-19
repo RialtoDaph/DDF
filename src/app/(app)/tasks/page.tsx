@@ -48,6 +48,8 @@ export default async function TasksPage() {
               <TaskRow
                 key={t.id}
                 task={{ ...t, assignee_name: (t.users as unknown as { name: string } | null)?.name }}
+                users={users ?? []}
+                canEdit={canAssign}
               />
             ))}
           </ul>
@@ -62,6 +64,8 @@ export default async function TasksPage() {
               <TaskRow
                 key={t.id}
                 task={{ ...t, assignee_name: (t.users as unknown as { name: string } | null)?.name }}
+                users={users ?? []}
+                canEdit={canAssign}
               />
             ))}
           </ul>
