@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { navForRole, type NavItem } from "@/lib/nav";
+import { navForRole, type NavGroup } from "@/lib/nav";
 import type { Notification } from "@/lib/notifications";
 import type { UserRole } from "@/lib/database.types";
 import { signOut } from "@/app/auth/actions";
@@ -29,13 +29,13 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const navItems = navForRole(profile.role);
+  const navGroups = navForRole(profile.role);
 
   return (
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-60 md:flex-col border-r border-ink-border bg-ink-raised">
-        <SidebarContent navItems={navItems} profile={profile} pathname={pathname} />
+        <SidebarContent navGroups={navGroups} profile={profile} pathname={pathname} />
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0">
@@ -68,7 +68,7 @@ export function AppShell({
                 </button>
               </div>
               <SidebarContent
-                navItems={navItems}
+                navGroups={navGroups}
                 profile={profile}
                 pathname={pathname}
                 onNavigate={() => setOpen(false)}
@@ -89,12 +89,12 @@ export function AppShell({
 }
 
 function SidebarContent({
-  navItems,
+  navGroups,
   profile,
   pathname,
   onNavigate,
 }: {
-  navItems: NavItem[];
+  navGroups: NavGroup[];
   profile: { name: string; role: UserRole; email: string };
   pathname: string;
   onNavigate?: () => void;
@@ -106,27 +106,39 @@ function SidebarContent({
         <p className="text-[0.6rem] tracking-[0.25em] uppercase text-parchment-dim mt-3">Bar-Management</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
-                active
-                  ? "bg-wine/15 text-wine border border-wine/30"
-                  : "text-parchment-dim hover:text-parchment hover:bg-ink-card border border-transparent",
-              )}
-            >
-              <Icon size={18} strokeWidth={1.75} />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-3">
+        {navGroups.map((group, i) => (
+          <div key={group.label ?? `group-${i}`} className="space-y-0.5">
+            {group.label && (
+              <p className="px-3 pt-1 pb-1 text-[0.65rem] tracking-[0.3em] uppercase text-parchment-dim/70">
+                {group.label}
+              </p>
+            )}
+            {group.items.map((item) => {
+              const active =
+                item.href === "/checklists/opening"
+                  ? pathname.startsWith("/checklists")
+                  : pathname === item.href || pathname.startsWith(item.href + "/");
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors",
+                    active
+                      ? "bg-wine/15 text-wine border border-wine/30"
+                      : "text-parchment-dim hover:text-parchment hover:bg-ink-card border border-transparent",
+                  )}
+                >
+                  <Icon size={18} strokeWidth={1.75} />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-ink-border px-3 py-3">

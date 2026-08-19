@@ -2,11 +2,9 @@ import type { UserRole } from "@/lib/database.types";
 import {
   LayoutDashboard,
   Package,
-  Sunrise,
-  Moon,
-  CalendarDays,
-  CalendarRange,
+  ClipboardCheck,
   ListChecks,
+  MessageCircle,
   Truck,
   BookOpenText,
   BookMarked,
@@ -15,7 +13,6 @@ import {
   GraduationCap,
   ScrollText,
   Settings,
-  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,25 +23,53 @@ export interface NavItem {
   roles: UserRole[];
 }
 
-export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Uebersicht", icon: LayoutDashboard, roles: ["owner", "manager", "staff"] },
-  { href: "/inventory", label: "Inventar", icon: Package, roles: ["owner", "manager", "staff"] },
-  { href: "/checklists/opening", label: "Opening", icon: Sunrise, roles: ["owner", "manager", "staff"] },
-  { href: "/checklists/closing", label: "Closing", icon: Moon, roles: ["owner", "manager", "staff"] },
-  { href: "/checklists/weekly", label: "Wochencheck", icon: CalendarDays, roles: ["owner", "manager", "staff"] },
-  { href: "/checklists/monthly", label: "Monatscheck", icon: CalendarRange, roles: ["owner", "manager", "staff"] },
-  { href: "/tasks", label: "Aufgaben", icon: ListChecks, roles: ["owner", "manager", "staff"] },
-  { href: "/chat", label: "Chat", icon: MessageCircle, roles: ["owner", "manager", "staff"] },
-  { href: "/suppliers", label: "Lieferanten", icon: Truck, roles: ["owner", "manager"] },
-  { href: "/menu", label: "Menue & Rezepte", icon: BookOpenText, roles: ["owner", "manager"] },
-  { href: "/reports", label: "Berichte", icon: BarChart3, roles: ["owner", "manager"] },
-  { href: "/handbuch", label: "Handbuch", icon: BookMarked, roles: ["owner", "manager", "staff"] },
-  { href: "/training", label: "Training", icon: GraduationCap, roles: ["owner", "manager", "staff"] },
-  { href: "/users", label: "Benutzer", icon: Users, roles: ["owner", "manager"] },
-  { href: "/audit-log", label: "Audit-Log", icon: ScrollText, roles: ["owner", "manager"] },
-  { href: "/settings/checklists", label: "Einstellungen", icon: Settings, roles: ["owner", "manager"] },
+export interface NavGroup {
+  label: string | null;
+  items: NavItem[];
+}
+
+const NAV_GROUPS_ALL: { label: string | null; items: NavItem[] }[] = [
+  {
+    label: null,
+    items: [{ href: "/dashboard", label: "Uebersicht", icon: LayoutDashboard, roles: ["owner", "manager", "staff"] }],
+  },
+  {
+    label: "Heute",
+    items: [
+      { href: "/checklists/opening", label: "Checklisten", icon: ClipboardCheck, roles: ["owner", "manager", "staff"] },
+      { href: "/tasks", label: "Aufgaben", icon: ListChecks, roles: ["owner", "manager", "staff"] },
+      { href: "/chat", label: "Chat", icon: MessageCircle, roles: ["owner", "manager", "staff"] },
+    ],
+  },
+  {
+    label: "Bestand",
+    items: [
+      { href: "/inventory", label: "Inventar", icon: Package, roles: ["owner", "manager", "staff"] },
+      { href: "/suppliers", label: "Lieferanten", icon: Truck, roles: ["owner", "manager"] },
+      { href: "/menu", label: "Menue & Rezepte", icon: BookOpenText, roles: ["owner", "manager"] },
+    ],
+  },
+  {
+    label: "Wissen",
+    items: [
+      { href: "/handbuch", label: "Handbuch", icon: BookMarked, roles: ["owner", "manager", "staff"] },
+      { href: "/training", label: "Training", icon: GraduationCap, roles: ["owner", "manager", "staff"] },
+    ],
+  },
+  {
+    label: "Verwaltung",
+    items: [
+      { href: "/reports", label: "Berichte", icon: BarChart3, roles: ["owner", "manager"] },
+      { href: "/users", label: "Benutzer", icon: Users, roles: ["owner", "manager"] },
+      { href: "/audit-log", label: "Audit-Log", icon: ScrollText, roles: ["owner", "manager"] },
+      { href: "/settings/checklists", label: "Einstellungen", icon: Settings, roles: ["owner", "manager"] },
+    ],
+  },
 ];
 
-export function navForRole(role: UserRole): NavItem[] {
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+export function navForRole(role: UserRole): NavGroup[] {
+  return NAV_GROUPS_ALL.map((group) => ({
+    label: group.label,
+    items: group.items.filter((item) => item.roles.includes(role)),
+  })).filter((group) => group.items.length > 0);
 }
