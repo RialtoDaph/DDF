@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, formatTotalVolume } from "@/lib/utils";
 
 /**
  * Visual stock-vs-par gauge. Below 50% of par reads amber, at/below 20% reads warning red.
@@ -7,17 +7,20 @@ export function GaugeBar({
   current,
   par,
   unit,
+  unitVolumeMl,
   className,
 }: {
   current: number;
   par: number;
   unit?: string;
+  unitVolumeMl?: number | null;
   className?: string;
 }) {
   const ratio = par > 0 ? current / par : current > 0 ? 1 : 0;
   const pct = Math.max(0, Math.min(1, ratio)) * 100;
   const critical = ratio <= 0.2;
   const low = ratio > 0.2 && ratio <= 0.5;
+  const totalVolume = formatTotalVolume(current, unitVolumeMl ?? null);
 
   return (
     <div className={cn("w-full", className)}>
@@ -25,6 +28,7 @@ export function GaugeBar({
         <span className="tabular text-sm text-parchment">
           {current}
           {unit ? ` ${unit}` : ""}
+          {totalVolume && <span className="text-parchment-dim"> ({totalVolume})</span>}
         </span>
         <span className="tabular text-xs text-parchment-dim">Soll {par}{unit ? ` ${unit}` : ""}</span>
       </div>

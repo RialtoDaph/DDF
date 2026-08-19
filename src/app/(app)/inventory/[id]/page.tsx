@@ -45,7 +45,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
       </div>
 
       <Card>
-        <GaugeBar current={item.current_stock} par={item.par_level} unit={item.unit} />
+        <GaugeBar current={item.current_stock} par={item.par_level} unit={item.unit} unitVolumeMl={item.unit_volume_ml} />
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

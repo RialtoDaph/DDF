@@ -6,6 +6,7 @@ import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import type { ItemCategory } from "@/lib/database.types";
 import { type ActionState, initialActionState } from "@/lib/actionState";
+import { UNIT_SUGGESTIONS } from "../units";
 
 export function EditItemForm({
   item,
@@ -15,6 +16,7 @@ export function EditItemForm({
     name: string;
     category: ItemCategory;
     unit: string;
+    unit_volume_ml: number | null;
     par_level: number;
     purchase_price: number | null;
     is_perishable: boolean;
@@ -44,8 +46,25 @@ export function EditItemForm({
         </div>
         <div>
           <Label htmlFor="edit-unit">Einheit</Label>
-          <Input id="edit-unit" name="unit" defaultValue={item.unit} required />
+          <Input id="edit-unit" name="unit" defaultValue={item.unit} required list="unit-suggestions" />
+          <datalist id="unit-suggestions">
+            {UNIT_SUGGESTIONS.map((u) => (
+              <option key={u} value={u} />
+            ))}
+          </datalist>
         </div>
+      </div>
+      <div>
+        <Label htmlFor="edit-unit-volume">Volumen pro Einheit (ml, optional)</Label>
+        <Input
+          id="edit-unit-volume"
+          name="unit_volume_ml"
+          type="number"
+          step="1"
+          min="0"
+          defaultValue={item.unit_volume_ml ?? ""}
+          placeholder="z. B. 700 für eine 0,7l-Flasche"
+        />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

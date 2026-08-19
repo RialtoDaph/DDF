@@ -29,7 +29,7 @@ export default async function InventoryPage({
 
   let query = supabase
     .from("inventory_items")
-    .select("id, name, category, unit, current_stock, par_level")
+    .select("id, name, category, unit, unit_volume_ml, current_stock, par_level")
     .order("name");
 
   if (category && category !== "all") {
@@ -82,7 +82,7 @@ export default async function InventoryPage({
                   {CATEGORIES.find((c) => c.value === item.category)?.label}
                 </span>
               </div>
-              <GaugeBar current={item.current_stock} par={item.par_level} unit={item.unit} />
+              <GaugeBar current={item.current_stock} par={item.par_level} unit={item.unit} unitVolumeMl={item.unit_volume_ml} />
             </Card>
           </Link>
         ))}

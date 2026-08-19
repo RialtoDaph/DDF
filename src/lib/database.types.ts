@@ -80,6 +80,7 @@ export interface Database {
           name: string;
           category: ItemCategory;
           unit: string;
+          unit_volume_ml: number | null;
           par_level: number;
           current_stock: number;
           purchase_price: number | null;
@@ -93,6 +94,7 @@ export interface Database {
           name: string;
           category: ItemCategory;
           unit: string;
+          unit_volume_ml?: number | null;
           par_level?: number;
           current_stock?: number;
           purchase_price?: number | null;

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { UNIT_SUGGESTIONS } from "../units";
 
 const initialState = { error: "" };
 
@@ -31,8 +32,17 @@ export function NewItemForm() {
         </div>
         <div>
           <Label htmlFor="unit">Einheit</Label>
-          <Input id="unit" name="unit" required placeholder="Flasche, kg, Stk." />
+          <Input id="unit" name="unit" required placeholder="cl, g, Stk. …" list="unit-suggestions" />
+          <datalist id="unit-suggestions">
+            {UNIT_SUGGESTIONS.map((u) => (
+              <option key={u} value={u} />
+            ))}
+          </datalist>
         </div>
+      </div>
+      <div>
+        <Label htmlFor="unit_volume_ml">Volumen pro Einheit (ml, optional)</Label>
+        <Input id="unit_volume_ml" name="unit_volume_ml" type="number" step="1" min="0" placeholder="z. B. 700 für eine 0,7l-Flasche" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
