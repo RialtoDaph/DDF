@@ -6,7 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { GaugeBar } from "@/components/ui/GaugeBar";
 import { MovementForm } from "./MovementForm";
 import { EditItemForm } from "./EditItemForm";
-import { DetailShell } from "./DetailShell";
+import { DetailShell } from "@/components/ui/DetailShell";
 import { formatTimestamp } from "@/lib/utils";
 
 const CATEGORY_LABEL: Record<string, string> = {

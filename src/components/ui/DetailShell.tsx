@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+/** Detail-screen shell: back-link-adjacent header with a "Bearbeiten" toggle that reveals an edit form inline, used by Inventory/Supplier/Menu detail pages. */
 export function DetailShell({
   title,
   subtitle,
