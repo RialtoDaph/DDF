@@ -45,7 +45,11 @@ export async function addTemplateItem(_prevState: unknown, formData: FormData) {
   const templateId = String(formData.get("template_id") ?? "");
   const supabase = await createClient();
 
-  const { data: template } = await supabase.from("checklist_templates").select("items").eq("id", templateId).single();
+  const { data: template } = await supabase
+    .from("checklist_templates")
+    .select("name, items")
+    .eq("id", templateId)
+    .single();
   if (!template) return { error: "Vorlage nicht gefunden." };
 
   const items = (template.items as ChecklistTemplateItem[]) ?? [];
@@ -62,6 +66,10 @@ export async function addTemplateItem(_prevState: unknown, formData: FormData) {
 
   if (error) return { error: error.message };
 
+  // Staff fill the checklist out on /checklists/[type], not here — without
+  // this a newly added item only appears in Settings until something else
+  // happens to revalidate that route, so it looks like the add did nothing.
+  revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
   return { success: true };
 }
@@ -71,12 +79,17 @@ export async function removeTemplateItem(templateId: string, index: number) {
   if (!canManageMasterData(profile.role)) return;
 
   const supabase = await createClient();
-  const { data: template } = await supabase.from("checklist_templates").select("items").eq("id", templateId).single();
+  const { data: template } = await supabase
+    .from("checklist_templates")
+    .select("name, items")
+    .eq("id", templateId)
+    .single();
   if (!template) return;
 
   const items = ((template.items as ChecklistTemplateItem[]) ?? []).filter((_, i) => i !== index);
   await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
 
+  revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
 }
 
@@ -88,7 +101,11 @@ export async function updateTemplateItem(_prevState: unknown, formData: FormData
   const index = Number(formData.get("index") ?? -1);
   const supabase = await createClient();
 
-  const { data: template } = await supabase.from("checklist_templates").select("items").eq("id", templateId).single();
+  const { data: template } = await supabase
+    .from("checklist_templates")
+    .select("name, items")
+    .eq("id", templateId)
+    .single();
   if (!template) return { error: "Vorlage nicht gefunden." };
 
   const items = (template.items as ChecklistTemplateItem[]) ?? [];
@@ -103,6 +120,7 @@ export async function updateTemplateItem(_prevState: unknown, formData: FormData
   const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
   if (error) return { error: error.message };
 
+  revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
   return { success: true };
 }
@@ -112,7 +130,11 @@ export async function moveTemplateItem(templateId: string, index: number, direct
   if (!canManageMasterData(profile.role)) return;
 
   const supabase = await createClient();
-  const { data: template } = await supabase.from("checklist_templates").select("items").eq("id", templateId).single();
+  const { data: template } = await supabase
+    .from("checklist_templates")
+    .select("name, items")
+    .eq("id", templateId)
+    .single();
   if (!template) return;
 
   const items = (template.items as ChecklistTemplateItem[]) ?? [];
@@ -122,5 +144,6 @@ export async function moveTemplateItem(templateId: string, index: number, direct
   [items[index], items[target]] = [items[target], items[index]];
   await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
 
+  revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
 }

@@ -33,7 +33,7 @@ export function ItemRow({
 
   const satisfied = checked && (!item.requires_photo || !!photo);
 
-  function persist(nextChecked: boolean, capturedPhoto?: CapturedPhoto) {
+  function persist(nextChecked: boolean, opts?: { capturedPhoto?: CapturedPhoto; clearPhoto?: boolean }) {
     setError(null);
     startTransition(async () => {
       const fd = new FormData();
@@ -41,10 +41,11 @@ export function ItemRow({
       fd.set("type", type);
       fd.set("item_text", item.text);
       fd.set("checked", String(nextChecked));
-      if (capturedPhoto) {
-        fd.set("photo", capturedPhoto.file);
-        fd.set("taken_at", capturedPhoto.takenAt);
+      if (opts?.capturedPhoto) {
+        fd.set("photo", opts.capturedPhoto.file);
+        fd.set("taken_at", opts.capturedPhoto.takenAt);
       }
+      if (opts?.clearPhoto) fd.set("clear_photo", "true");
       const res = await saveItemResult(fd);
       if (res?.error) setError(res.error);
     });
@@ -61,13 +62,18 @@ export function ItemRow({
     setPhoto(p);
     setChecked(true);
     setCaptureOpen(false);
-    persist(true, p);
+    persist(true, { capturedPhoto: p });
   }
 
+  // The X on CameraCapture used to only clear local state — the wrong photo
+  // stayed saved server-side and came right back on the next page load.
+  // Persist the clear (and drop back to unchecked, since a photo-required
+  // item can't be satisfied without one) so a bad photo can actually be
+  // removed and retaken.
   function handleClearPhoto() {
     setPhoto(null);
     setChecked(false);
-    persist(false);
+    persist(false, { clearPhoto: true });
   }
 
   return (

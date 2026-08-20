@@ -61,6 +61,7 @@ export async function saveItemResult(formData: FormData) {
   const checked = formData.get("checked") === "true";
   const photo = formData.get("photo") as File | null;
   const takenAt = formData.get("taken_at") ? String(formData.get("taken_at")) : null;
+  const clearPhoto = formData.get("clear_photo") === "true";
 
   const { data: submission } = await supabase
     .from("checklist_submissions")
@@ -90,6 +91,22 @@ export async function saveItemResult(formData: FormData) {
     if (uploadError) return { error: uploadError.message };
   }
 
+  // A replaced or cleared photo (the "wrong photo, take it again" case) was
+  // never actually removed before — clicking the X on CameraCapture only
+  // reset local React state, so the old photo_url stayed in the DB and came
+  // straight back on the next page load. Fetch it first so we can drop the
+  // now-orphaned file from storage once the new row is saved.
+  let previousPhotoPath: string | null = null;
+  if (photoPath || clearPhoto) {
+    const { data: existing } = await supabase
+      .from("checklist_item_results")
+      .select("photo_url")
+      .eq("submission_id", submissionId)
+      .eq("item_text", itemText)
+      .single();
+    previousPhotoPath = existing?.photo_url ?? null;
+  }
+
   const { data: upserted, error } = await supabase
     .from("checklist_item_results")
     .upsert(
@@ -98,6 +115,7 @@ export async function saveItemResult(formData: FormData) {
         item_text: itemText,
         checked,
         ...(photoPath ? { photo_url: photoPath, photo_taken_at: takenAt } : {}),
+        ...(clearPhoto ? { photo_url: null, photo_taken_at: null } : {}),
       },
       { onConflict: "submission_id,item_text" },
     )
@@ -105,6 +123,10 @@ export async function saveItemResult(formData: FormData) {
     .single();
 
   if (error || !upserted) return { error: error?.message ?? "Speichern fehlgeschlagen." };
+
+  if (previousPhotoPath && previousPhotoPath !== photoPath) {
+    await supabase.storage.from("checklist-photos").remove([previousPhotoPath]);
+  }
 
   if (type) revalidatePath(`/checklists/${type}`);
   return { success: true, photoPath };
