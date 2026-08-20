@@ -6,7 +6,7 @@ import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import type { ItemCategory } from "@/lib/database.types";
 import { type ActionState, initialActionState } from "@/lib/actionState";
-import { UNIT_SUGGESTIONS, isMeasurementUnit } from "../units";
+import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../units";
 
 export function EditItemForm({
   item,
@@ -82,13 +82,16 @@ export function EditItemForm({
       </div>
       {!isMeasurementUnit(unit) && (
         <div>
-          <Label htmlFor="edit-unit-volume">Volumen pro Einheit (ml, optional)</Label>
+          <Label htmlFor="edit-unit-volume">
+            Volumen pro Einheit (ml){requiresUnitVolume(unit) ? "" : ", optional"}
+          </Label>
           <Input
             id="edit-unit-volume"
             name="unit_volume_ml"
             type="number"
             step="1"
             min="0"
+            required={requiresUnitVolume(unit)}
             defaultValue={item.unit_volume_ml ?? ""}
             placeholder="z. B. 700 für eine 0,7l-Flasche"
           />

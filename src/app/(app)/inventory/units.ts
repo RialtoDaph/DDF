@@ -13,6 +13,15 @@ export function isMeasurementUnit(unit: string): boolean {
   return MEASUREMENT_UNITS.has(unit.trim().toLowerCase());
 }
 
+// "Flasche" is unambiguously a bottle of liquid — without its volume,
+// recipe costing for anything poured from one silently breaks (a recipe
+// amount meant as "5cl" gets priced as "5 whole bottles"). Other
+// non-measurement units (Stk., Kiste, Portion, ...) aren't necessarily
+// volume-based, so unit_volume_ml stays optional for those.
+export function requiresUnitVolume(unit: string): boolean {
+  return unit.trim().toLowerCase() === "flasche";
+}
+
 // For a recipe amount stored in the ingredient's own unit, a quick-entry
 // helper in a smaller, more natural unit: helperValue * factor = baseValue.
 export const RECIPE_AMOUNT_HELPERS: Record<string, { label: string; factor: number }> = {

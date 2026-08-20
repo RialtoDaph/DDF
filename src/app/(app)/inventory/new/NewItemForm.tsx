@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { createItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { UNIT_SUGGESTIONS, isMeasurementUnit } from "../units";
+import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../units";
 
 const initialState = { error: "" };
 
@@ -52,8 +52,18 @@ export function NewItemForm() {
       </div>
       {!isMeasurementUnit(unit) && (
         <div>
-          <Label htmlFor="unit_volume_ml">Volumen pro Einheit (ml, optional)</Label>
-          <Input id="unit_volume_ml" name="unit_volume_ml" type="number" step="1" min="0" placeholder="z. B. 700 für eine 0,7l-Flasche" />
+          <Label htmlFor="unit_volume_ml">
+            Volumen pro Einheit (ml){requiresUnitVolume(unit) ? "" : ", optional"}
+          </Label>
+          <Input
+            id="unit_volume_ml"
+            name="unit_volume_ml"
+            type="number"
+            step="1"
+            min="0"
+            required={requiresUnitVolume(unit)}
+            placeholder="z. B. 700 für eine 0,7l-Flasche"
+          />
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">

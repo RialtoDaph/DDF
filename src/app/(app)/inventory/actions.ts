@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { requiresUnitVolume } from "./units";
 import type { ItemCategory, MovementReason, MovementType } from "@/lib/database.types";
 
 export async function createItem(_prevState: unknown, formData: FormData) {
@@ -16,12 +17,18 @@ export async function createItem(_prevState: unknown, formData: FormData) {
     return { error: "Kein Standort zugeordnet." };
   }
 
+  const unit = String(formData.get("unit") ?? "").trim();
+  const unitVolumeMl = formData.get("unit_volume_ml") ? Number(formData.get("unit_volume_ml")) : null;
+  if (requiresUnitVolume(unit) && !unitVolumeMl) {
+    return { error: "Bitte Volumen pro Flasche (ml) angeben — sonst wird die Rezeptkalkulation falsch." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("inventory_items").insert({
     name: String(formData.get("name") ?? "").trim(),
     category: formData.get("category") as ItemCategory,
-    unit: String(formData.get("unit") ?? "").trim(),
-    unit_volume_ml: formData.get("unit_volume_ml") ? Number(formData.get("unit_volume_ml")) : null,
+    unit,
+    unit_volume_ml: unitVolumeMl,
     par_level: Number(formData.get("par_level") ?? 0),
     current_stock: Number(formData.get("current_stock") ?? 0),
     purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
@@ -82,14 +89,20 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
   }
 
   const id = String(formData.get("id") ?? "");
+  const unit = String(formData.get("unit") ?? "").trim();
+  const unitVolumeMl = formData.get("unit_volume_ml") ? Number(formData.get("unit_volume_ml")) : null;
+  if (requiresUnitVolume(unit) && !unitVolumeMl) {
+    return { error: "Bitte Volumen pro Flasche (ml) angeben — sonst wird die Rezeptkalkulation falsch." };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("inventory_items")
     .update({
       name: String(formData.get("name") ?? "").trim(),
       category: formData.get("category") as ItemCategory,
-      unit: String(formData.get("unit") ?? "").trim(),
-      unit_volume_ml: formData.get("unit_volume_ml") ? Number(formData.get("unit_volume_ml")) : null,
+      unit,
+      unit_volume_ml: unitVolumeMl,
       par_level: Number(formData.get("par_level") ?? 0),
       purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
       is_perishable: formData.get("is_perishable") === "on",
