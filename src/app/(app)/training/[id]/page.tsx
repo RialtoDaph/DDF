@@ -67,12 +67,16 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--sp-lg)]">
+      <Link href="/training" className="text-xs text-parchment-dim hover:text-parchment">
+        ← Zurück zu Training
+      </Link>
+
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">{moduleData.title}</h1>
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">{moduleData.title}</h1>
           {moduleData.menu_items && (
-            <p className="text-xs text-wine-soft mt-1">{(moduleData.menu_items as unknown as { name: string }).name}</p>
+            <p className="text-xs text-wine-soft mt-1.5">{(moduleData.menu_items as unknown as { name: string }).name}</p>
           )}
         </div>
         {myProgress?.status === "passed" && <StampBadge>Bestanden</StampBadge>}

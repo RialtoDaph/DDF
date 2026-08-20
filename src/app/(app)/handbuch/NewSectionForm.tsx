@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Plus } from "lucide-react";
 import { createSection } from "./actions";
 import { Input, Label, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -22,9 +21,8 @@ export function NewSectionForm({ categories }: { categories: string[] }) {
 
   if (!open) {
     return (
-      <Button variant="secondary" onClick={() => setOpen(true)} className="w-full">
-        <Plus size={16} />
-        Abschnitt hinzufuegen
+      <Button onClick={() => setOpen(true)} className="whitespace-nowrap">
+        + Neuer Artikel
       </Button>
     );
   }

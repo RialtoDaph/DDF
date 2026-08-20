@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { GaugeBar } from "@/components/ui/GaugeBar";
 import { StampBadge } from "@/components/ui/StampBadge";
+import { Disclosure } from "@/components/ui/Disclosure";
 import { CsvExportButton } from "@/components/reports/CsvExportButton";
 import { CHECKLIST_LABEL, periodLabel } from "@/app/(app)/checklists/shared/lib";
 import { formatDate } from "@/lib/utils";
@@ -21,7 +21,7 @@ export default async function ReportsPage() {
 
   const [{ data: items }, { data: expiring }, { data: menuItems }, { data: recipeRows }, { data: tasks }, { data: closings }] =
     await Promise.all([
-      supabase.from("inventory_items").select("id, name, category, unit, current_stock, par_level").order("category"),
+      supabase.from("inventory_items").select("id, name, category, unit, current_stock, par_level, purchase_price").order("category"),
       supabase
         .from("stock_movements")
         .select("id, expiry_date, quantity, inventory_items(name, unit)")
@@ -58,133 +58,130 @@ export default async function ReportsPage() {
 
   const today10 = today.toISOString().slice(0, 10);
 
+  const stockValue = (items ?? []).reduce((sum, i) => sum + i.current_stock * (i.purchase_price ?? 0), 0);
+
+  const marginsWithPrice = (menuItems ?? [])
+    .filter((m) => m.sale_price > 0)
+    .map((m) => ((m.sale_price - (costByMenuItem.get(m.id) ?? 0)) / m.sale_price) * 100);
+  const avgMarginPct = marginsWithPrice.length > 0 ? marginsWithPrice.reduce((a, b) => a + b, 0) / marginsWithPrice.length : 0;
+
+  const taskEntries = [...taskByEmployee.values()];
+  const totalTasksDone = taskEntries.reduce((sum, e) => sum + e.done, 0);
+  const totalTasks = taskEntries.reduce((sum, e) => sum + e.total, 0);
+  const taskCompletionPct = totalTasks > 0 ? (totalTasksDone / totalTasks) * 100 : 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--sp-lg)]">
       <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">Berichte</h1>
-        <p className="text-sm text-parchment-dim mt-1">Bestand, Ablauf, Kosten/Marge, Aufgaben, Closing-Verlauf.</p>
+        <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Berichte</h1>
+        <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
+          Bestand, Kosten, Aufgaben und Checklisten-Verlauf.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-[var(--sp-md)]">
+        <Card className="flex flex-col gap-2.5">
+          <Link href="/inventory" className="group">
+            <h3 className="font-serif font-semibold text-[length:var(--fs-h2)] text-parchment group-hover:text-wine transition-colors">
+              Bestandsbericht
+            </h3>
+            <p className="text-xs text-parchment-dim mt-1">Aktueller Lagerwert</p>
+            <p className="tabular text-[26px] text-parchment mt-2.5">
+              {stockValue.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+            </p>
+          </Link>
+          <CsvExportButton
+            filename="bestandsuebersicht.csv"
+            headers={["Artikel", "Kategorie", "Bestand", "Einheit", "Soll"]}
+            rows={(items ?? []).map((i) => [i.name, i.category, i.current_stock, i.unit, i.par_level])}
+          />
+        </Card>
+
+        <Card className="flex flex-col gap-2.5">
+          <div>
+            <h3 className="font-serif font-semibold text-[length:var(--fs-h2)] text-parchment">Ablauf-Tracker</h3>
+            <p className="text-xs text-parchment-dim mt-1">Ablaufdatum in den nächsten 30 Tagen</p>
+          </div>
+          <p className="tabular text-[26px] text-parchment">{expiring?.length ?? 0}</p>
+          <CsvExportButton
+            filename="ablauf-tracker.csv"
+            headers={["Artikel", "Menge", "Einheit", "Ablaufdatum"]}
+            rows={(expiring ?? []).map((e) => {
+              const item = e.inventory_items as unknown as { name: string; unit: string } | null;
+              return [item?.name ?? "—", e.quantity, item?.unit ?? "", e.expiry_date!];
+            })}
+          />
+          {expiring && expiring.length > 0 && (
+            <Disclosure label="Details anzeigen" closeLabel="Ausblenden">
+              <ul className="divide-y divide-ink-border">
+                {expiring.map((e) => {
+                  const item = e.inventory_items as unknown as { name: string; unit: string } | null;
+                  const expired = e.expiry_date! < today10;
+                  return (
+                    <li key={e.id} className="flex items-center justify-between py-2 text-sm">
+                      <span className="text-parchment">
+                        {item?.name} <span className="text-parchment-dim">— {e.quantity} {item?.unit}</span>
+                      </span>
+                      <span className={`tabular text-xs ${expired ? "text-warn" : "text-parchment-dim"}`}>
+                        {formatDate(e.expiry_date!)}
+                        {expired ? " (abgelaufen)" : ""}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Disclosure>
+          )}
+        </Card>
+
+        <Card className="flex flex-col gap-2.5">
+          <Link href="/menu" className="group">
+            <h3 className="font-serif font-semibold text-[length:var(--fs-h2)] text-parchment group-hover:text-wine transition-colors">
+              Kosten &amp; Marge
+            </h3>
+            <p className="text-xs text-parchment-dim mt-1">Durchschnittliche Marge, Menü</p>
+            <p className="tabular text-[26px] text-parchment mt-2.5">{avgMarginPct.toFixed(0)} %</p>
+          </Link>
+          <CsvExportButton
+            filename="kosten-marge.csv"
+            headers={["Menüpunkt", "Verkaufspreis", "Kosten", "Marge"]}
+            rows={(menuItems ?? []).map((m) => {
+              const cost = costByMenuItem.get(m.id) ?? 0;
+              return [m.name, m.sale_price.toFixed(2), cost.toFixed(2), (m.sale_price - cost).toFixed(2)];
+            })}
+          />
+        </Card>
+
+        <Card className="flex flex-col gap-2.5">
+          <div>
+            <h3 className="font-serif font-semibold text-[length:var(--fs-h2)] text-parchment">Aufgaben-Erledigung</h3>
+            <p className="text-xs text-parchment-dim mt-1">Pro Mitarbeiter, gesamt</p>
+          </div>
+          <p className="tabular text-[26px] text-parchment">{taskCompletionPct.toFixed(0)} %</p>
+          <CsvExportButton
+            filename="aufgabenerledigung.csv"
+            headers={["Mitarbeiter", "Erledigt", "Gesamt", "Quote"]}
+            rows={taskEntries.map((e) => [e.name, e.done, e.total, `${e.total > 0 ? Math.round((e.done / e.total) * 100) : 0}%`])}
+          />
+          {taskEntries.length > 0 && (
+            <Disclosure label="Details anzeigen" closeLabel="Ausblenden">
+              <ul className="divide-y divide-ink-border">
+                {taskEntries.map((e) => (
+                  <li key={e.name} className="flex items-center justify-between py-2 text-sm">
+                    <span className="text-parchment">{e.name}</span>
+                    <span className="tabular text-xs text-parchment-dim">
+                      {e.done}/{e.total} erledigt ({e.total > 0 ? Math.round((e.done / e.total) * 100) : 0}%)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Disclosure>
+          )}
+        </Card>
       </div>
 
       <Card>
-        <CardHeader
-          title="Bestandsübersicht"
-          right={
-            <CsvExportButton
-              filename="bestandsuebersicht.csv"
-              headers={["Artikel", "Kategorie", "Bestand", "Einheit", "Soll"]}
-              rows={(items ?? []).map((i) => [i.name, i.category, i.current_stock, i.unit, i.par_level])}
-            />
-          }
-        />
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {(items ?? []).map((i) => (
-            <div key={i.id} className="flex items-center gap-4">
-              <span className="text-sm text-parchment w-40 truncate">{i.name}</span>
-              <GaugeBar current={i.current_stock} par={i.par_level} unit={i.unit} className="flex-1" />
-            </div>
-          ))}
-          {(!items || items.length === 0) && <p className="text-sm text-parchment-dim">Keine Artikel.</p>}
-        </div>
-      </Card>
-
-      <Card>
-        <CardHeader title="Ablauf-Tracker" subtitle="Ablaufdatum in den nächsten 30 Tagen" />
-        {!expiring || expiring.length === 0 ? (
-          <p className="text-sm text-parchment-dim">Nichts läuft in den nächsten 30 Tagen ab.</p>
-        ) : (
-          <ul className="divide-y divide-ink-border">
-            {expiring.map((e) => {
-              const item = e.inventory_items as unknown as { name: string; unit: string } | null;
-              const expired = e.expiry_date! < today10;
-              return (
-                <li key={e.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-parchment">
-                    {item?.name} <span className="text-parchment-dim">— {e.quantity} {item?.unit}</span>
-                  </span>
-                  <span className={`tabular text-xs ${expired ? "text-warn" : "text-parchment-dim"}`}>
-                    {formatDate(e.expiry_date!)}
-                    {expired ? " (abgelaufen)" : ""}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Kosten &amp; Marge"
-          right={
-            <CsvExportButton
-              filename="kosten-marge.csv"
-              headers={["Menüpunkt", "Verkaufspreis", "Kosten", "Marge"]}
-              rows={(menuItems ?? []).map((m) => {
-                const cost = costByMenuItem.get(m.id) ?? 0;
-                return [m.name, m.sale_price.toFixed(2), cost.toFixed(2), (m.sale_price - cost).toFixed(2)];
-              })}
-            />
-          }
-        />
-        {!menuItems || menuItems.length === 0 ? (
-          <p className="text-sm text-parchment-dim">Noch keine Menüpunkte.</p>
-        ) : (
-          <ul className="divide-y divide-ink-border">
-            {menuItems.map((m) => {
-              const cost = costByMenuItem.get(m.id) ?? 0;
-              const margin = m.sale_price - cost;
-              return (
-                <li key={m.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link href={`/menu/${m.id}`} className="text-parchment hover:text-wine">
-                    {m.name}
-                  </Link>
-                  <span className={`tabular text-xs ${margin >= 0 ? "text-done" : "text-warn"}`}>
-                    {m.sale_price.toFixed(2)} € − {cost.toFixed(2)} € = {margin.toFixed(2)} €
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Aufgabenerledigung pro Mitarbeiter"
-          right={
-            <CsvExportButton
-              filename="aufgabenerledigung.csv"
-              headers={["Mitarbeiter", "Erledigt", "Gesamt", "Quote"]}
-              rows={[...taskByEmployee.values()].map((e) => [
-                e.name,
-                e.done,
-                e.total,
-                `${e.total > 0 ? Math.round((e.done / e.total) * 100) : 0}%`,
-              ])}
-            />
-          }
-        />
-        {taskByEmployee.size === 0 ? (
-          <p className="text-sm text-parchment-dim">Noch keine Aufgaben zugewiesen.</p>
-        ) : (
-          <ul className="divide-y divide-ink-border">
-            {[...taskByEmployee.values()].map((e) => (
-              <li key={e.name} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-parchment">{e.name}</span>
-                <span className="tabular text-xs text-parchment-dim">
-                  {e.done}/{e.total} erledigt ({e.total > 0 ? Math.round((e.done / e.total) * 100) : 0}%)
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Checklisten-Archiv"
-          subtitle="Eingereichte Opening-, Closing-, Wochen- und Monatsberichte inkl. Fotos"
-        />
+        <CardHeader title="Checklisten-Verlauf" subtitle="Eingereichte und freigegebene Berichte inkl. Fotos" />
         {!closings || closings.length === 0 ? (
           <p className="text-sm text-parchment-dim">Noch keine Checklisten eingereicht.</p>
         ) : (
@@ -192,7 +189,7 @@ export default async function ReportsPage() {
             {closings.map((c) => {
               const type = (c.checklist_templates as unknown as { name: ChecklistType } | null)?.name;
               return (
-                <li key={c.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <Link href={`/reports/checkliste/${c.id}`} className="min-w-0 text-parchment hover:text-wine">
                     <span className="text-wine">{type ? CHECKLIST_LABEL[type] : "Checkliste"}</span>
                     {" · "}

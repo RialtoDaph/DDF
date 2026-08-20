@@ -357,6 +357,10 @@ export interface Database {
         { id: string; outlet_id: string; user_id: string; content: string; created_at: string },
         { id?: string; outlet_id: string; user_id: string; content: string }
       >;
+      events: Table<
+        { id: string; outlet_id: string; label: string; event_date: string; created_by: string | null; created_at: string },
+        { id?: string; outlet_id: string; label: string; event_date: string; created_by?: string | null }
+      >;
     };
     Views: Record<string, never>;
     Functions: {

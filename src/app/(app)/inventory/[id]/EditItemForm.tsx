@@ -10,6 +10,7 @@ import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../unit
 
 export function EditItemForm({
   item,
+  suppliers,
 }: {
   item: {
     id: string;
@@ -20,7 +21,9 @@ export function EditItemForm({
     par_level: number;
     purchase_price: number | null;
     is_perishable: boolean;
+    default_supplier_id: string | null;
   };
+  suppliers: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateItem, initialActionState);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -117,6 +120,17 @@ export function EditItemForm({
             defaultValue={item.purchase_price ?? ""}
           />
         </div>
+      </div>
+      <div>
+        <Label htmlFor="edit-default-supplier">Standard-Lieferant</Label>
+        <Select id="edit-default-supplier" name="default_supplier_id" defaultValue={item.default_supplier_id ?? ""}>
+          <option value="">— auswählen —</option>
+          {suppliers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
       </div>
       <label className="flex items-center gap-2 text-sm text-parchment-dim">
         <input type="checkbox" name="is_perishable" defaultChecked={item.is_perishable} className="accent-wine" />

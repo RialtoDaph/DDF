@@ -22,41 +22,41 @@ export default async function MenuPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-[var(--sp-lg)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">Menü &amp; Rezepte</h1>
-          <p className="text-sm text-parchment-dim mt-1">Zutatenkosten und Marge je Menüpunkt.</p>
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Menü &amp; Rezepte</h1>
+          <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">Kosten- und Margenberechnung je Getränk.</p>
         </div>
-        {canManageMasterData(profile.role) && <LinkButton href="/menu/new">Neuer Menüpunkt</LinkButton>}
+        {canManageMasterData(profile.role) && <LinkButton href="/menu/new">+ Neues Getränk</LinkButton>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {(menuItems ?? []).map((m) => {
-          const cost = costByMenuItem.get(m.id) ?? 0;
-          const margin = m.sale_price - cost;
-          const marginPct = m.sale_price > 0 ? (margin / m.sale_price) * 100 : 0;
-          return (
-            <Link key={m.id} href={`/menu/${m.id}`}>
-              <Card className="hover:border-wine/50 transition-colors">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-parchment">{m.name}</span>
-                  <span className="tabular text-sm text-parchment-dim">{m.sale_price.toFixed(2)} €</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-parchment-dim">Kosten: {cost.toFixed(2)} €</span>
-                  <span className={margin >= 0 ? "text-done" : "text-warn"}>
-                    Marge: {margin.toFixed(2)} € ({marginPct.toFixed(0)}%)
-                  </span>
-                </div>
-              </Card>
-            </Link>
-          );
-        })}
+      <Card>
         {(!menuItems || menuItems.length === 0) && (
-          <p className="text-sm text-parchment-dim col-span-full">Noch keine Menüpunkte angelegt.</p>
+          <p className="text-sm text-parchment-dim">Noch keine Menüpunkte angelegt.</p>
         )}
-      </div>
+        <ul className="divide-y divide-ink-border">
+          {(menuItems ?? []).map((m) => {
+            const cost = costByMenuItem.get(m.id) ?? 0;
+            const margin = m.sale_price - cost;
+            return (
+              <li key={m.id}>
+                <Link
+                  href={`/menu/${m.id}`}
+                  className="flex flex-wrap items-center justify-between gap-3 py-2.5 px-1 -mx-1 rounded-md hover:bg-ink-raised transition-colors"
+                >
+                  <span className="text-[length:var(--fs-body)] text-parchment flex-1 min-w-32">{m.name}</span>
+                  <span className="tabular text-xs text-parchment-dim">VK {m.sale_price.toFixed(2)} €</span>
+                  <span className="tabular text-xs text-parchment-dim">Kosten {cost.toFixed(2)} €</span>
+                  <span className={`tabular text-xs ${margin >= 0 ? "text-done" : "text-warn"}`}>
+                    Marge {margin.toFixed(2)} €
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
     </div>
   );
 }

@@ -27,6 +27,7 @@ export function ItemRow({
   const [photo, setPhoto] = useState<CapturedPhoto | { previewUrl: string; takenAt: string } | null>(
     initialPhotoUrl && initialTakenAt ? { previewUrl: initialPhotoUrl, takenAt: initialTakenAt } : null,
   );
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function ItemRow({
   }
 
   function handleToggle() {
-    if (readOnly) return;
+    if (readOnly || item.requires_photo) return;
     const next = !checked;
     setChecked(next);
     persist(next);
@@ -59,6 +60,7 @@ export function ItemRow({
   function handleCapture(p: CapturedPhoto) {
     setPhoto(p);
     setChecked(true);
+    setCaptureOpen(false);
     persist(true, p);
   }
 
@@ -68,34 +70,58 @@ export function ItemRow({
         <button
           type="button"
           onClick={handleToggle}
-          disabled={readOnly || pending}
+          disabled={readOnly || pending || item.requires_photo}
           aria-label={checked ? "Als offen markieren" : "Als erledigt markieren"}
           className={cn(
-            "mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors",
+            "mt-0.5 h-[18px] w-[18px] shrink-0 rounded-[5px] border-[1.5px] flex items-center justify-center transition-colors",
             satisfied ? "bg-done border-done" : "border-ink-border",
             readOnly && "opacity-60",
           )}
         >
-          {satisfied && <span className="text-ink text-xs">✓</span>}
+          {satisfied && <span className="text-ink text-[10px]">✓</span>}
         </button>
         <div className="flex-1 min-w-0">
           <p className={cn("text-sm", satisfied ? "text-parchment-dim line-through" : "text-parchment")}>
             {item.text}
-            {item.requires_photo && <span className="text-wine ml-1">📷</span>}
           </p>
-          {item.requires_photo && !readOnly && (
+
+          {photo && (
             <div className="mt-2 max-w-xs">
-              <CameraCapture onCapture={handleCapture} onClear={() => setPhoto(null)} value={photo} />
+              {readOnly ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photo.previewUrl} alt={item.text} className="rounded-md border border-ink-border" />
+              ) : (
+                <CameraCapture onCapture={handleCapture} onClear={() => setPhoto(null)} value={photo} />
+              )}
             </div>
           )}
-          {item.requires_photo && readOnly && photo && (
+
+          {!photo && !readOnly && captureOpen && (
             <div className="mt-2 max-w-xs">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.previewUrl} alt={item.text} className="rounded-md border border-ink-border" />
+              <CameraCapture onCapture={handleCapture} value={null} />
             </div>
           )}
+
           {error && <p className="text-xs text-warn mt-1">{error}</p>}
         </div>
+
+        {item.requires_photo && (
+          <button
+            type="button"
+            onClick={() => !readOnly && !photo && setCaptureOpen((o) => !o)}
+            disabled={readOnly || !!photo}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1 whitespace-nowrap rounded font-mono text-[9.5px] px-1.5 py-0.5 border",
+              photo
+                ? "border-done text-done"
+                : captureOpen
+                  ? "border-wine text-wine"
+                  : "border-ink-border text-parchment-dim",
+            )}
+          >
+            📷 FOTO
+          </button>
+        )}
       </div>
     </li>
   );

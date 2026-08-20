@@ -24,7 +24,7 @@ export function TaskForm({ users }: { users: { id: string; name: string }[] }) {
   if (!open) {
     return (
       <Button variant="primary" onClick={() => setOpen(true)}>
-        Neue Aufgabe
+        + Neue Aufgabe
       </Button>
     );
   }

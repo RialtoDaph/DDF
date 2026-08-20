@@ -32,12 +32,24 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+// Applies the saved density preference before first paint so the toggle
+// doesn't cause a visible flash from comfortable -> compact on load.
+const setDensityBeforePaint = `
+try {
+  var d = localStorage.getItem("ddf-density");
+  if (d === "compact") document.documentElement.setAttribute("data-density", "compact");
+} catch (e) {}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="de"
       className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: setDensityBeforePaint }} />
+      </head>
       <body className="min-h-full flex flex-col bg-ink text-parchment">{children}</body>
     </html>
   );

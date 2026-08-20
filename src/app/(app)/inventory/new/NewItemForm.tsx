@@ -8,7 +8,7 @@ import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../unit
 
 const initialState = { error: "" };
 
-export function NewItemForm() {
+export function NewItemForm({ suppliers }: { suppliers: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(createItem, initialState);
   const [unit, setUnit] = useState("");
 
@@ -83,6 +83,17 @@ export function NewItemForm() {
       <div>
         <Label htmlFor="purchase_price">Einkaufspreis (€)</Label>
         <Input id="purchase_price" name="purchase_price" type="number" step="0.01" min="0" />
+      </div>
+      <div>
+        <Label htmlFor="default_supplier_id">Standard-Lieferant</Label>
+        <Select id="default_supplier_id" name="default_supplier_id" defaultValue="">
+          <option value="">— auswählen —</option>
+          {suppliers.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
       </div>
       <label className="flex items-center gap-2 text-sm text-parchment-dim">
         <input type="checkbox" name="is_perishable" className="accent-wine" />

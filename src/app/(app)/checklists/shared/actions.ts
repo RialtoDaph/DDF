@@ -156,6 +156,7 @@ export async function saveHandoverNote(formData: FormData) {
 
   if (error) return { error: error.message };
   revalidatePath("/checklists/closing");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 

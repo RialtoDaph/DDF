@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { requireProfile } from "@/lib/auth";
+import { requireProfile, canApprove } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { signedPhotoUrl, CHECKLIST_LABEL, periodLabel } from "@/app/(app)/checklists/shared/lib";
+import { ApproveButton } from "@/app/(app)/checklists/shared/ApproveButton";
 import type { ChecklistType } from "@/lib/database.types";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StampBadge } from "@/components/ui/StampBadge";
-import { formatDate, formatTimestamp } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 export default async function ClosingReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,7 +18,7 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
   const { data: submission } = await supabase
     .from("checklist_submissions")
     .select(
-      "id, date, period_start, shift, cash_count, incident_notes, status, users!checklist_submissions_user_id_fkey(name), checklist_templates(name)",
+      "id, date, period_start, shift, cash_count, incident_notes, status, submitted_at, users!checklist_submissions_user_id_fkey(name), checklist_templates(name)",
     )
     .eq("id", id)
     .single();
@@ -25,8 +27,11 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
 
   const type = (submission.checklist_templates as unknown as { name: ChecklistType } | null)?.name;
   const heading = type
-    ? `${CHECKLIST_LABEL[type]} — ${periodLabel(type, submission.period_start)}`
-    : `Checkliste — ${formatDate(submission.date)}`;
+    ? `${CHECKLIST_LABEL[type]} · ${periodLabel(type, submission.period_start)}`
+    : `Checkliste · ${formatDate(submission.date)}`;
+  const submittedTime = submission.submitted_at
+    ? new Date(submission.submitted_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+    : null;
 
   const { data: results } = await supabase
     .from("checklist_item_results")
@@ -39,18 +44,31 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
       signedUrl: r.photo_url ? await signedPhotoUrl(supabase, r.photo_url) : null,
     })),
   );
+  const photos = withUrls.filter((r) => r.signedUrl);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-[var(--sp-lg)]">
+      <Link href="/reports" className="text-xs text-parchment-dim hover:text-parchment">
+        ← Zurück zu Berichten
+      </Link>
+
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">{heading}</h1>
-          <p className="text-sm text-parchment-dim mt-1">
-            {(submission.users as unknown as { name: string } | null)?.name}
-            {submission.shift ? ` · ${submission.shift}` : ""}
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">{heading}</h1>
+          <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
+            Eingereicht von {(submission.users as unknown as { name: string } | null)?.name}
+            {submittedTime ? ` · ${submittedTime}` : ""}
           </p>
         </div>
-        {submission.status === "approved" ? <StampBadge>Freigegeben</StampBadge> : <StampBadge variant="warn">Eingereicht</StampBadge>}
+        <div className="flex items-center gap-2 shrink-0">
+          {submission.status === "approved" && <StampBadge>Freigegeben</StampBadge>}
+          {submission.status === "submitted" && (
+            <>
+              <StampBadge variant="warn">Eingereicht</StampBadge>
+              {canApprove(profile.role) && type && <ApproveButton submissionId={submission.id} type={type} />}
+            </>
+          )}
+        </div>
       </div>
 
       {(submission.cash_count !== null || submission.incident_notes) && (
@@ -69,25 +87,36 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
         <CardHeader title={type === "closing" ? "Checkliste & Round Check" : "Checkliste"} />
         <ul className="divide-y divide-ink-border">
           {withUrls.map((r) => (
-            <li key={r.id} className="py-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-parchment">{r.item_text}</span>
-                {r.checked ? <StampBadge>Erledigt</StampBadge> : <StampBadge variant="warn">Offen</StampBadge>}
-              </div>
-              {r.signedUrl && (
-                <div className="mt-2 max-w-xs">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={r.signedUrl} alt={r.item_text} className="rounded-md border border-ink-border" />
-                  {r.photo_taken_at && (
-                    <p className="tabular text-xs text-parchment-dim mt-1">{formatTimestamp(r.photo_taken_at)}</p>
-                  )}
-                </div>
-              )}
+            <li key={r.id} className="flex items-center justify-between py-2.5">
+              <span className="text-sm text-parchment">{r.item_text}</span>
+              {r.checked ? <StampBadge>Erledigt</StampBadge> : <StampBadge variant="warn">Offen</StampBadge>}
             </li>
           ))}
           {withUrls.length === 0 && <p className="text-sm text-parchment-dim py-2">Keine Einträge.</p>}
         </ul>
       </Card>
+
+      {photos.length > 0 && (
+        <Card>
+          <CardHeader title="Foto-Nachweise" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {photos.map((r) => (
+              <div key={r.id} className="space-y-1.5">
+                <div className="aspect-square rounded-lg overflow-hidden border border-ink-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={r.signedUrl!} alt={r.item_text} className="w-full h-full object-cover" />
+                </div>
+                <p className="text-[11px] text-parchment-dim truncate">{r.item_text}</p>
+                {r.photo_taken_at && (
+                  <p className="tabular text-[10px] text-parchment-dim/70">
+                    {new Date(r.photo_taken_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

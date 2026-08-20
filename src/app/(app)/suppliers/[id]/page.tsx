@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { DetailShell } from "@/components/ui/DetailShell";
 import { EditSupplierForm } from "./EditSupplierForm";
 import { AddPriceForm } from "./AddPriceForm";
 import { formatDate } from "@/lib/utils";
@@ -25,55 +27,58 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
   const canManage = canManageMasterData(profile.role);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">{supplier.name}</h1>
-        <p className="text-sm text-parchment-dim mt-1">
-          {supplier.category ?? "—"}
-          {supplier.contact ? ` · ${supplier.contact}` : ""}
-        </p>
+    <>
+      <Link href="/suppliers" className="text-xs text-parchment-dim hover:text-parchment">
+        ← Zurück zu Lieferanten
+      </Link>
+
+      <div className="mt-[var(--sp-md)]">
+        <DetailShell
+          title={supplier.name}
+          subtitle={`${supplier.category ?? "—"}${supplier.contact ? ` · ${supplier.contact}` : ""}`}
+          canManage={canManage}
+          editForm={
+            <Card>
+              <CardHeader title="Stammdaten" />
+              <EditSupplierForm supplier={supplier} />
+            </Card>
+          }
+        >
+          <div className="space-y-[var(--sp-lg)] mt-[var(--sp-lg)]">
+            <Card>
+              <CardHeader title="Preisverlauf" />
+              {!priceHistory || priceHistory.length === 0 ? (
+                <p className="text-sm text-parchment-dim">Noch keine Preise erfasst.</p>
+              ) : (
+                <ul className="divide-y divide-ink-border max-h-96 overflow-y-auto">
+                  {priceHistory.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between py-2.5 text-sm">
+                      <span className="text-parchment">
+                        {(p.inventory_items as unknown as { name: string; unit: string } | null)?.name}
+                      </span>
+                      <span className="tabular text-parchment-dim">
+                        {p.price.toFixed(2)} € · seit {formatDate(p.valid_from)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canManage && (
+                <div className="mt-4 pt-4 border-t border-ink-border">
+                  <AddPriceForm supplierId={supplier.id} items={items ?? []} />
+                </div>
+              )}
+            </Card>
+
+            {supplier.notes && (
+              <Card>
+                <CardHeader title="Notizen" />
+                <p className="text-sm text-parchment-dim whitespace-pre-wrap">{supplier.notes}</p>
+              </Card>
+            )}
+          </div>
+        </DetailShell>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader title="Preisverlauf" />
-          {!priceHistory || priceHistory.length === 0 ? (
-            <p className="text-sm text-parchment-dim">Noch keine Preise erfasst.</p>
-          ) : (
-            <ul className="divide-y divide-ink-border max-h-96 overflow-y-auto">
-              {priceHistory.map((p) => (
-                <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-parchment">
-                    {(p.inventory_items as unknown as { name: string; unit: string } | null)?.name}
-                  </span>
-                  <span className="tabular text-parchment-dim">
-                    {p.price.toFixed(2)} € · {formatDate(p.valid_from)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {canManage && (
-            <div className="mt-4 pt-4 border-t border-ink-border">
-              <AddPriceForm supplierId={supplier.id} items={items ?? []} />
-            </div>
-          )}
-        </Card>
-
-        {canManage && (
-          <Card>
-            <CardHeader title="Stammdaten" />
-            <EditSupplierForm supplier={supplier} />
-          </Card>
-        )}
-      </div>
-
-      {supplier.notes && (
-        <Card>
-          <CardHeader title="Notizen" />
-          <p className="text-sm text-parchment-dim whitespace-pre-wrap">{supplier.notes}</p>
-        </Card>
-      )}
-    </div>
+    </>
   );
 }

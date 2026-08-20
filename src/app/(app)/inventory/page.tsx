@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { GaugeBar } from "@/components/ui/GaugeBar";
 import { LinkButton } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
+import { LinkChip } from "@/components/ui/Chip";
 import type { ItemCategory } from "@/lib/database.types";
 
 const CATEGORIES: { value: ItemCategory | "all"; label: string }[] = [
@@ -44,15 +44,15 @@ export default async function InventoryPage({
   const { data: items } = await query;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-[var(--sp-lg)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">Inventar</h1>
-          <p className="text-sm text-parchment-dim mt-1">Bestand gegen Sollmenge, nach Kategorie.</p>
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Inventar</h1>
+          <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">Bestand gegen Sollmenge, nach Kategorie.</p>
         </div>
         {canManageMasterData(profile.role) && (
           <LinkButton href="/inventory/new" className="whitespace-nowrap">
-            Neuer Artikel
+            + Neuer Artikel
           </LinkButton>
         )}
       </div>
@@ -61,29 +61,24 @@ export default async function InventoryPage({
         {CATEGORIES.map((c) => {
           const active = (category ?? "all") === c.value;
           return (
-            <Link
+            <LinkChip
               key={c.value}
               href={c.value === "all" ? "/inventory" : `/inventory?category=${c.value}`}
-              className={cn(
-                "shrink-0 rounded-full px-3.5 py-1.5 text-sm border transition-colors",
-                active
-                  ? "bg-wine text-ink border-wine"
-                  : "border-ink-border text-parchment-dim hover:text-parchment hover:border-wine/50",
-              )}
+              active={active}
             >
               {c.label}
-            </Link>
+            </LinkChip>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3 gap-[var(--sp-md)]">
         {(items ?? []).map((item) => (
           <Link key={item.id} href={`/inventory/${item.id}`}>
             <Card className="hover:border-wine/50 transition-colors">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-parchment">{item.name}</span>
-                <span className="text-xs uppercase tracking-wide text-parchment-dim">
+              <div className="flex items-center justify-between mb-2.5 gap-2">
+                <span className="text-[length:var(--fs-body)] text-parchment truncate">{item.name}</span>
+                <span className="text-[9.5px] uppercase tracking-wide text-parchment-dim whitespace-nowrap">
                   {CATEGORIES.find((c) => c.value === item.category)?.label}
                 </span>
               </div>
