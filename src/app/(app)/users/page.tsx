@@ -17,10 +17,10 @@ export default async function UsersPage() {
   const canEditRole = profile.role === "owner";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--sp-lg)]">
       <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">Benutzer</h1>
-        <p className="text-sm text-parchment-dim mt-1">
+        <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Benutzer</h1>
+        <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
           {canEditRole
             ? "Rollen, Standort und Aktiv-Status verwalten."
             : "Mitarbeitende deines Standorts aktivieren/deaktivieren."}

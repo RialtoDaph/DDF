@@ -3,7 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
+import type { ActionState } from "@/lib/actionState";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
+
+export async function createEvent(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+  if (!profile.outlet_id) return { error: "Kein Standort zugeordnet." };
+
+  const label = String(formData.get("label") ?? "").trim();
+  const eventDate = String(formData.get("event_date") ?? "");
+  if (!label || !eventDate) return { error: "Bitte Bezeichnung und Datum angeben." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("events")
+    .insert({ outlet_id: profile.outlet_id, label, event_date: eventDate, created_by: profile.id });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/checklists");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function deleteEvent(eventId: string) {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return;
+
+  const supabase = await createClient();
+  await supabase.from("events").delete().eq("id", eventId);
+
+  revalidatePath("/settings/checklists");
+  revalidatePath("/dashboard");
+}
 
 export async function addTemplateItem(_prevState: unknown, formData: FormData) {
   const profile = await requireProfile();
