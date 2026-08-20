@@ -35,16 +35,26 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
 
   const { data: results } = await supabase
     .from("checklist_item_results")
-    .select("id, item_text, checked, photo_url, photo_taken_at")
+    .select("id, item_text, checked, checklist_item_photos(id, photo_url, taken_at)")
     .eq("submission_id", id);
 
   const withUrls = await Promise.all(
-    (results ?? []).map(async (r) => ({
-      ...r,
-      signedUrl: r.photo_url ? await signedPhotoUrl(supabase, r.photo_url) : null,
-    })),
+    (results ?? []).map(async (r) => {
+      const photoRows =
+        (r.checklist_item_photos as unknown as { id: string; photo_url: string; taken_at: string }[]) ?? [];
+      const itemPhotos = await Promise.all(
+        photoRows.map(async (p) => ({
+          id: p.id,
+          url: await signedPhotoUrl(supabase, p.photo_url),
+          takenAt: p.taken_at,
+        })),
+      );
+      return { ...r, itemPhotos: itemPhotos.filter((p) => p.url) };
+    }),
   );
-  const photos = withUrls.filter((r) => r.signedUrl);
+  const photos = withUrls.flatMap((r) =>
+    r.itemPhotos.map((p) => ({ id: p.id, signedUrl: p.url, itemText: r.item_text, takenAt: p.takenAt })),
+  );
 
   return (
     <div className="space-y-[var(--sp-lg)]">
@@ -104,12 +114,12 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
               <div key={r.id} className="space-y-1.5">
                 <div className="aspect-square rounded-lg overflow-hidden border border-ink-border">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={r.signedUrl!} alt={r.item_text} className="w-full h-full object-cover" />
+                  <img src={r.signedUrl!} alt={r.itemText} className="w-full h-full object-cover" />
                 </div>
-                <p className="text-[11px] text-parchment-dim truncate">{r.item_text}</p>
-                {r.photo_taken_at && (
+                <p className="text-[11px] text-parchment-dim truncate">{r.itemText}</p>
+                {r.takenAt && (
                   <p className="tabular text-[10px] text-parchment-dim/70">
-                    {new Date(r.photo_taken_at).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(r.takenAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
                   </p>
                 )}
               </div>

@@ -51,6 +51,7 @@ export async function createDefaultTemplate(type: ChecklistType) {
   return { success: true };
 }
 
+/** Toggles a non-photo item's checked state. Photo-required items are only ever checked through addChecklistItemPhoto/deleteChecklistItemPhoto below. */
 export async function saveItemResult(formData: FormData) {
   await requireProfile();
   const supabase = await createClient();
@@ -59,13 +60,10 @@ export async function saveItemResult(formData: FormData) {
   const type = formData.get("type") ? String(formData.get("type")) : null;
   const itemText = String(formData.get("item_text"));
   const checked = formData.get("checked") === "true";
-  const photo = formData.get("photo") as File | null;
-  const takenAt = formData.get("taken_at") ? String(formData.get("taken_at")) : null;
-  const clearPhoto = formData.get("clear_photo") === "true";
 
   const { data: submission } = await supabase
     .from("checklist_submissions")
-    .select("id, status, checklist_templates(outlet_id)")
+    .select("id, status")
     .eq("id", submissionId)
     .single();
 
@@ -77,59 +75,117 @@ export async function saveItemResult(formData: FormData) {
     return { error: "Diese Checkliste ist bereits eingereicht und kann nicht mehr bearbeitet werden." };
   }
 
-  let photoPath: string | null = null;
-
-  if (photo && photo.size > 0) {
-    const outletId = (submission.checklist_templates as unknown as { outlet_id: string } | null)?.outlet_id;
-    if (!outletId) return { error: "Vorlage nicht gefunden." };
-
-    photoPath = `${outletId}/${submissionId}/${slugify(itemText)}-${Date.now()}.jpg`;
-    const { error: uploadError } = await supabase.storage
-      .from("checklist-photos")
-      .upload(photoPath, photo, { contentType: "image/jpeg" });
-
-    if (uploadError) return { error: uploadError.message };
-  }
-
-  // A replaced or cleared photo (the "wrong photo, take it again" case) was
-  // never actually removed before — clicking the X on CameraCapture only
-  // reset local React state, so the old photo_url stayed in the DB and came
-  // straight back on the next page load. Fetch it first so we can drop the
-  // now-orphaned file from storage once the new row is saved.
-  let previousPhotoPath: string | null = null;
-  if (photoPath || clearPhoto) {
-    const { data: existing } = await supabase
-      .from("checklist_item_results")
-      .select("photo_url")
-      .eq("submission_id", submissionId)
-      .eq("item_text", itemText)
-      .single();
-    previousPhotoPath = existing?.photo_url ?? null;
-  }
-
   const { data: upserted, error } = await supabase
     .from("checklist_item_results")
     .upsert(
-      {
-        submission_id: submissionId,
-        item_text: itemText,
-        checked,
-        ...(photoPath ? { photo_url: photoPath, photo_taken_at: takenAt } : {}),
-        ...(clearPhoto ? { photo_url: null, photo_taken_at: null } : {}),
-      },
+      { submission_id: submissionId, item_text: itemText, checked },
       { onConflict: "submission_id,item_text" },
     )
-    .select("submission_id")
+    .select("id")
     .single();
 
   if (error || !upserted) return { error: error?.message ?? "Speichern fehlgeschlagen." };
 
-  if (previousPhotoPath && previousPhotoPath !== photoPath) {
-    await supabase.storage.from("checklist-photos").remove([previousPhotoPath]);
+  if (type) revalidatePath(`/checklists/${type}`);
+  return { success: true };
+}
+
+/** Uploads a new photo for a Punkt and marks it checked. A Punkt can carry any number of photos. */
+export async function addChecklistItemPhoto(formData: FormData) {
+  await requireProfile();
+  const supabase = await createClient();
+
+  const submissionId = String(formData.get("submission_id"));
+  const type = formData.get("type") ? String(formData.get("type")) : null;
+  const itemText = String(formData.get("item_text"));
+  const photo = formData.get("photo") as File | null;
+  const takenAt = formData.get("taken_at") ? String(formData.get("taken_at")) : new Date().toISOString();
+
+  if (!photo || photo.size === 0) return { error: "Kein Foto übermittelt." };
+
+  const { data: submission } = await supabase
+    .from("checklist_submissions")
+    .select("id, status, checklist_templates(outlet_id)")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) return { error: "Eintrag nicht gefunden." };
+  if (submission.status !== "draft") {
+    return { error: "Diese Checkliste ist bereits eingereicht und kann nicht mehr bearbeitet werden." };
   }
 
+  const outletId = (submission.checklist_templates as unknown as { outlet_id: string } | null)?.outlet_id;
+  if (!outletId) return { error: "Vorlage nicht gefunden." };
+
+  const photoPath = `${outletId}/${submissionId}/${slugify(itemText)}-${Date.now()}.jpg`;
+  const { error: uploadError } = await supabase.storage
+    .from("checklist-photos")
+    .upload(photoPath, photo, { contentType: "image/jpeg" });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: itemResult, error: upsertError } = await supabase
+    .from("checklist_item_results")
+    .upsert(
+      { submission_id: submissionId, item_text: itemText, checked: true },
+      { onConflict: "submission_id,item_text" },
+    )
+    .select("id")
+    .single();
+
+  if (upsertError || !itemResult) return { error: upsertError?.message ?? "Speichern fehlgeschlagen." };
+
+  const { data: photoRow, error: photoError } = await supabase
+    .from("checklist_item_photos")
+    .insert({ item_result_id: itemResult.id, photo_url: photoPath, taken_at: takenAt })
+    .select("id")
+    .single();
+
+  if (photoError || !photoRow) return { error: photoError?.message ?? "Foto konnte nicht gespeichert werden." };
+
   if (type) revalidatePath(`/checklists/${type}`);
-  return { success: true, photoPath };
+  return { success: true, photoId: photoRow.id };
+}
+
+/** Deletes one photo. If it was the item's last photo, the item drops back to unchecked. */
+export async function deleteChecklistItemPhoto(photoId: string, submissionId: string, type: ChecklistType) {
+  await requireProfile();
+  const supabase = await createClient();
+
+  const { data: submission } = await supabase
+    .from("checklist_submissions")
+    .select("id, status")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) return { error: "Eintrag nicht gefunden." };
+  if (submission.status !== "draft") {
+    return { error: "Diese Checkliste ist bereits eingereicht und kann nicht mehr bearbeitet werden." };
+  }
+
+  const { data: photo } = await supabase
+    .from("checklist_item_photos")
+    .select("photo_url, item_result_id")
+    .eq("id", photoId)
+    .single();
+  if (!photo) return { error: "Foto nicht gefunden." };
+
+  const { error } = await supabase.from("checklist_item_photos").delete().eq("id", photoId);
+  if (error) return { error: error.message };
+
+  await supabase.storage.from("checklist-photos").remove([photo.photo_url]);
+
+  const { count } = await supabase
+    .from("checklist_item_photos")
+    .select("id", { count: "exact", head: true })
+    .eq("item_result_id", photo.item_result_id);
+
+  if (!count) {
+    await supabase.from("checklist_item_results").update({ checked: false }).eq("id", photo.item_result_id);
+  }
+
+  revalidatePath(`/checklists/${type}`);
+  return { success: true };
 }
 
 export async function updateSubmissionMeta(formData: FormData) {

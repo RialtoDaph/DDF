@@ -95,22 +95,27 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
   const { data: results } = await supabase
     .from("checklist_item_results")
-    .select("item_text, checked, photo_url, photo_taken_at")
+    .select("item_text, checked, checklist_item_photos(id, photo_url, taken_at)")
     .eq("submission_id", submission.id);
 
   const resultMap: ItemResultMap = {};
   for (const r of results ?? []) {
-    resultMap[r.item_text] = {
-      checked: r.checked,
-      photo_url: r.photo_url ? await signedPhotoUrl(supabase, r.photo_url) : null,
-      photo_taken_at: r.photo_taken_at,
-    };
+    const photoRows =
+      (r.checklist_item_photos as unknown as { id: string; photo_url: string; taken_at: string }[]) ?? [];
+    const photos = await Promise.all(
+      photoRows.map(async (p) => ({
+        id: p.id,
+        url: (await signedPhotoUrl(supabase, p.photo_url)) ?? "",
+        takenAt: p.taken_at,
+      })),
+    );
+    resultMap[r.item_text] = { checked: r.checked, photos: photos.filter((p) => p.url) };
   }
 
   const items = template.items as ChecklistTemplateItem[];
   const allSatisfied = items
     .filter((i) => i.requires_photo)
-    .every((i) => resultMap[i.text]?.checked && resultMap[i.text]?.photo_url);
+    .every((i) => resultMap[i.text]?.checked && (resultMap[i.text]?.photos.length ?? 0) > 0);
 
   const readOnly = submission.status !== "draft";
   const isClosing = type === "closing";

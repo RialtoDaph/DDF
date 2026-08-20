@@ -1,10 +1,10 @@
 import { Card, CardHeader } from "@/components/ui/Card";
-import { ItemRow } from "./ItemRow";
+import { ItemRow, type ItemPhoto } from "./ItemRow";
 import { ROUND_CHECK_CATEGORIES, ROUND_CHECK_LABEL } from "./lib";
 import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export interface ItemResultMap {
-  [itemText: string]: { checked: boolean; photo_url: string | null; photo_taken_at: string | null };
+  [itemText: string]: { checked: boolean; photos: ItemPhoto[] };
 }
 
 export function ChecklistSections({
@@ -46,8 +46,7 @@ export function ChecklistSections({
               type={type}
               item={item}
               initialChecked={results[item.text]?.checked ?? false}
-              initialPhotoUrl={results[item.text]?.photo_url ?? null}
-              initialTakenAt={results[item.text]?.photo_taken_at ?? null}
+              initialPhotos={results[item.text]?.photos ?? []}
               readOnly={readOnly}
             />
           ))}
@@ -71,8 +70,7 @@ export function ChecklistSections({
                       type={type}
                       item={item}
                       initialChecked={results[item.text]?.checked ?? false}
-                      initialPhotoUrl={results[item.text]?.photo_url ?? null}
-                      initialTakenAt={results[item.text]?.photo_taken_at ?? null}
+                      initialPhotos={results[item.text]?.photos ?? []}
                       readOnly={readOnly}
                     />
                   ))}
