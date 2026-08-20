@@ -101,6 +101,7 @@ export function UserRow({
         {pending ? "…" : "Speichern"}
       </Button>
       {state?.error && <p className="text-xs text-warn w-full">{state.error}</p>}
+      {state?.success && <p className="text-xs text-done w-full">Gespeichert.</p>}
     </form>
   );
 }

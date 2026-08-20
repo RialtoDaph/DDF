@@ -31,6 +31,7 @@ export function TaskRow({
   const [editing, setEditing] = useState(false);
   const [state, formAction, savePending] = useActionState<ActionState, FormData>(updateTask, initialActionState);
   const [prevSuccess, setPrevSuccess] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
   const done = task.status === "done";
 
   // Close the edit form once the save succeeds — the row re-renders from
@@ -43,13 +44,22 @@ export function TaskRow({
   }
 
   function toggle() {
-    startTransition(() => setTaskStatus(task.id, done ? "open" : "done"));
+    setRowError(null);
+    startTransition(async () => {
+      try {
+        await setTaskStatus(task.id, done ? "open" : "done");
+      } catch (e) {
+        setRowError(e instanceof Error ? e.message : "Speichern fehlgeschlagen.");
+      }
+    });
   }
 
   function remove() {
     if (!window.confirm(`"${task.title}" wirklich loeschen?`)) return;
-    startTransition(() => {
-      deleteTask(task.id);
+    setRowError(null);
+    startTransition(async () => {
+      const res = await deleteTask(task.id);
+      if (res?.error) setRowError(res.error);
     });
   }
 
@@ -141,6 +151,7 @@ export function TaskRow({
             </span>
           )}
         </div>
+        {rowError && <p className="text-xs text-warn mt-1">{rowError}</p>}
       </div>
       {canEdit && (
         <div className="flex items-center gap-1 shrink-0">

@@ -39,6 +39,7 @@ export function FloatingChat({
   });
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [supabase] = useState(() => createClient());
 
@@ -93,9 +94,14 @@ export function FloatingChat({
     const content = draft.trim();
     if (!content) return;
     setSending(true);
+    setSendError(null);
     const { error } = await supabase.from("chat_messages").insert({ outlet_id: outletId, user_id: currentUserId, content });
     setSending(false);
-    if (!error) setDraft("");
+    if (error) {
+      setSendError("Nachricht konnte nicht gesendet werden.");
+    } else {
+      setDraft("");
+    }
   }
 
   return (
@@ -149,6 +155,7 @@ export function FloatingChat({
             <div ref={bottomRef} />
           </div>
 
+          {sendError && <p className="px-3.5 pt-2 text-[0.65rem] text-warn">{sendError}</p>}
           <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-ink-border px-3 py-2.5">
             <input
               value={draft}

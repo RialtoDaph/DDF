@@ -19,10 +19,27 @@ export function SectionAdmin({
 }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [rowError, setRowError] = useState<string | null>(null);
   const [state, formAction, savePending] = useActionState<ActionState, FormData>(
     updateSection,
     initialActionState,
   );
+
+  function move(direction: "up" | "down") {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await moveSection(section.id, direction);
+      if (res?.error) setRowError(res.error);
+    });
+  }
+
+  function remove() {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await removeSection(section.id);
+      if (res?.error) setRowError(res.error);
+    });
+  }
 
   if (editing) {
     return (
@@ -57,42 +74,45 @@ export function SectionAdmin({
   }
 
   return (
-    <div className="mt-3 flex items-center gap-1 border-t border-ink-border pt-3">
-      <button
-        type="button"
-        onClick={() => startTransition(() => void moveSection(section.id, "up"))}
-        disabled={isFirst || pending}
-        aria-label="Nach oben verschieben"
-        className="text-parchment-dim hover:text-wine disabled:opacity-30"
-      >
-        <ChevronUp size={16} />
-      </button>
-      <button
-        type="button"
-        onClick={() => startTransition(() => void moveSection(section.id, "down"))}
-        disabled={isLast || pending}
-        aria-label="Nach unten verschieben"
-        className="text-parchment-dim hover:text-wine disabled:opacity-30"
-      >
-        <ChevronDown size={16} />
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        aria-label="Abschnitt bearbeiten"
-        className="text-parchment-dim hover:text-wine ml-1"
-      >
-        <Pencil size={14} />
-      </button>
-      <button
-        type="button"
-        onClick={() => startTransition(() => void removeSection(section.id))}
-        disabled={pending}
-        aria-label="Abschnitt loeschen"
-        className="text-parchment-dim hover:text-warn ml-1"
-      >
-        <X size={14} />
-      </button>
+    <div className="mt-3 border-t border-ink-border pt-3">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => move("up")}
+          disabled={isFirst || pending}
+          aria-label="Nach oben verschieben"
+          className="text-parchment-dim hover:text-wine disabled:opacity-30"
+        >
+          <ChevronUp size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => move("down")}
+          disabled={isLast || pending}
+          aria-label="Nach unten verschieben"
+          className="text-parchment-dim hover:text-wine disabled:opacity-30"
+        >
+          <ChevronDown size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          aria-label="Abschnitt bearbeiten"
+          className="text-parchment-dim hover:text-wine ml-1"
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={pending}
+          aria-label="Abschnitt loeschen"
+          className="text-parchment-dim hover:text-warn ml-1"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      {rowError && <p className="text-xs text-warn mt-1">{rowError}</p>}
     </div>
   );
 }

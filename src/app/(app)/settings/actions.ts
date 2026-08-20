@@ -29,13 +29,15 @@ export async function createEvent(_prevState: ActionState, formData: FormData): 
 
 export async function deleteEvent(eventId: string) {
   const profile = await requireProfile();
-  if (!canManageMasterData(profile.role)) return;
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
 
   const supabase = await createClient();
-  await supabase.from("events").delete().eq("id", eventId);
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) return { error: error.message };
 
   revalidatePath("/settings/checklists");
   revalidatePath("/dashboard");
+  return { success: true };
 }
 
 export async function addTemplateItem(_prevState: unknown, formData: FormData) {
@@ -76,7 +78,7 @@ export async function addTemplateItem(_prevState: unknown, formData: FormData) {
 
 export async function removeTemplateItem(templateId: string, index: number) {
   const profile = await requireProfile();
-  if (!canManageMasterData(profile.role)) return;
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
 
   const supabase = await createClient();
   const { data: template } = await supabase
@@ -84,13 +86,15 @@ export async function removeTemplateItem(templateId: string, index: number) {
     .select("name, items")
     .eq("id", templateId)
     .single();
-  if (!template) return;
+  if (!template) return { error: "Vorlage nicht gefunden." };
 
   const items = ((template.items as ChecklistTemplateItem[]) ?? []).filter((_, i) => i !== index);
-  await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
+  const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
+  return { success: true };
 }
 
 export async function updateTemplateItem(_prevState: unknown, formData: FormData) {
@@ -127,7 +131,7 @@ export async function updateTemplateItem(_prevState: unknown, formData: FormData
 
 export async function moveTemplateItem(templateId: string, index: number, direction: "up" | "down") {
   const profile = await requireProfile();
-  if (!canManageMasterData(profile.role)) return;
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
 
   const supabase = await createClient();
   const { data: template } = await supabase
@@ -135,15 +139,17 @@ export async function moveTemplateItem(templateId: string, index: number, direct
     .select("name, items")
     .eq("id", templateId)
     .single();
-  if (!template) return;
+  if (!template) return { error: "Vorlage nicht gefunden." };
 
   const items = (template.items as ChecklistTemplateItem[]) ?? [];
   const target = direction === "up" ? index - 1 : index + 1;
-  if (target < 0 || target >= items.length) return;
+  if (target < 0 || target >= items.length) return { success: true };
 
   [items[index], items[target]] = [items[target], items[index]];
-  await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
+  const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
+  return { success: true };
 }

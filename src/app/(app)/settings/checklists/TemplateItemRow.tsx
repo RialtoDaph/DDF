@@ -33,10 +33,27 @@ export function TemplateItemRow({
     : [...categoryOptions, { value: item.category, label: item.category }];
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [rowError, setRowError] = useState<string | null>(null);
   const [state, formAction, savePending] = useActionState<ActionState, FormData>(
     updateTemplateItem,
     initialActionState,
   );
+
+  function move(direction: "up" | "down") {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await moveTemplateItem(templateId, index, direction);
+      if (res?.error) setRowError(res.error);
+    });
+  }
+
+  function remove() {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await removeTemplateItem(templateId, index);
+      if (res?.error) setRowError(res.error);
+    });
+  }
 
   if (editing) {
     return (
@@ -80,51 +97,54 @@ export function TemplateItemRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-2 py-2">
-      <div className="min-w-0">
-        <p className="text-sm text-parchment truncate">{item.text}</p>
-        <p className="text-xs text-parchment-dim">
-          {item.category}
-          {item.requires_photo ? " · fotopflichtig" : ""}
-        </p>
+    <li className="py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-parchment truncate">{item.text}</p>
+          <p className="text-xs text-parchment-dim">
+            {item.category}
+            {item.requires_photo ? " · fotopflichtig" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => move("up")}
+            disabled={isFirst || pending}
+            aria-label="Nach oben verschieben"
+            className="text-parchment-dim hover:text-wine disabled:opacity-30"
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => move("down")}
+            disabled={isLast || pending}
+            aria-label="Nach unten verschieben"
+            className="text-parchment-dim hover:text-wine disabled:opacity-30"
+          >
+            <ChevronDown size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label="Punkt bearbeiten"
+            className="text-parchment-dim hover:text-wine ml-1"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={remove}
+            disabled={pending}
+            aria-label="Punkt entfernen"
+            className="text-parchment-dim hover:text-warn ml-1"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={() => startTransition(() => moveTemplateItem(templateId, index, "up"))}
-          disabled={isFirst || pending}
-          aria-label="Nach oben verschieben"
-          className="text-parchment-dim hover:text-wine disabled:opacity-30"
-        >
-          <ChevronUp size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => startTransition(() => moveTemplateItem(templateId, index, "down"))}
-          disabled={isLast || pending}
-          aria-label="Nach unten verschieben"
-          className="text-parchment-dim hover:text-wine disabled:opacity-30"
-        >
-          <ChevronDown size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          aria-label="Punkt bearbeiten"
-          className="text-parchment-dim hover:text-wine ml-1"
-        >
-          <Pencil size={14} />
-        </button>
-        <button
-          type="button"
-          onClick={() => startTransition(() => removeTemplateItem(templateId, index))}
-          disabled={pending}
-          aria-label="Punkt entfernen"
-          className="text-parchment-dim hover:text-warn ml-1"
-        >
-          <X size={14} />
-        </button>
-      </div>
+      {rowError && <p className="text-xs text-warn mt-1">{rowError}</p>}
     </li>
   );
 }
