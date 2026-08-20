@@ -7,10 +7,14 @@ import { Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navForRole, type NavGroup } from "@/lib/nav";
 import type { Notification } from "@/lib/notifications";
+import type { SearchEntry } from "@/lib/search";
 import type { UserRole } from "@/lib/database.types";
 import { signOut } from "@/app/auth/actions";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
+import { GlobalSearch } from "./GlobalSearch";
+import { DensityToggle } from "@/components/ui/DensityToggle";
+import { FloatingChat } from "@/components/chat/FloatingChat";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -18,13 +22,25 @@ const ROLE_LABEL: Record<string, string> = {
   staff: "Mitarbeiter",
 };
 
+interface ChatMessage {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  user_name: string;
+}
+
 export function AppShell({
   profile,
   notifications,
+  searchIndex,
+  chatMessages,
   children,
 }: {
-  profile: { name: string; role: UserRole; email: string };
+  profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   notifications: Notification[];
+  searchIndex: SearchEntry[];
+  chatMessages: ChatMessage[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -89,12 +105,25 @@ export function AppShell({
           </div>
         )}
 
-        <div className="hidden md:flex items-center justify-end px-8 pt-4">
-          <NotificationBell notifications={notifications} />
+        <div className="hidden md:flex items-center justify-between gap-4 px-8 pt-4">
+          <GlobalSearch index={searchIndex} className="w-64" />
+          <div className="flex items-center gap-3">
+            <DensityToggle />
+            <NotificationBell notifications={notifications} />
+          </div>
         </div>
 
         <main className="flex-1 min-w-0 p-4 md:px-8 md:pb-8 md:pt-2 max-w-6xl w-full mx-auto">{children}</main>
       </div>
+
+      {profile.outlet_id && (
+        <FloatingChat
+          outletId={profile.outlet_id}
+          currentUserId={profile.id}
+          currentUserName={profile.name}
+          initialMessages={chatMessages}
+        />
+      )}
     </div>
   );
 }
