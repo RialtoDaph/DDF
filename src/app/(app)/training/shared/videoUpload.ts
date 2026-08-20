@@ -243,6 +243,11 @@ async function runUpload(
         );
       } catch (err) {
         if (signal.aborted || err instanceof UploadCancelledError) throw new UploadCancelledError();
+        // The generic user-facing message below intentionally doesn't leak
+        // wasm/ffmpeg internals, but without logging the real cause here
+        // there's no way to tell "OOM on a huge 4K file" apart from "worker
+        // failed to load" apart from "unsupported codec" after the fact.
+        console.error("compressVideo failed:", err);
         return {
           error: "Komprimierung im Browser fehlgeschlagen. Bitte Video manuell verkleinern oder ein kürzeres Video wählen.",
         };

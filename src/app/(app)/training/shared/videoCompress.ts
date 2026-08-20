@@ -27,7 +27,14 @@ async function getFFmpeg(): Promise<FFmpeg> {
       });
       ffmpegInstance = ffmpeg;
       return ffmpeg;
-    })();
+    })().catch((err) => {
+      // A failed load (e.g. a network hiccup fetching the 32 MB wasm core)
+      // must not stick around as a cached rejected promise — without this,
+      // every later attempt keeps awaiting the same dead promise and fails
+      // immediately forever, even after the network recovers.
+      loadPromise = null;
+      throw err;
+    });
   }
   return loadPromise;
 }
