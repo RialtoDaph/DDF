@@ -64,6 +64,12 @@ export function ItemRow({
     persist(true, p);
   }
 
+  function handleClearPhoto() {
+    setPhoto(null);
+    setChecked(false);
+    persist(false);
+  }
+
   return (
     <li className={cn("py-3", item.requires_photo && "border-l-2 pl-3 -ml-3 border-wine/30")}>
       <div className="flex items-start gap-3">
@@ -91,7 +97,7 @@ export function ItemRow({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={photo.previewUrl} alt={item.text} className="rounded-md border border-ink-border" />
               ) : (
-                <CameraCapture onCapture={handleCapture} onClear={() => setPhoto(null)} value={photo} />
+                <CameraCapture onCapture={handleCapture} onClear={handleClearPhoto} value={photo} />
               )}
             </div>
           )}

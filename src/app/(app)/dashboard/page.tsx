@@ -25,11 +25,27 @@ export default async function DashboardPage() {
   const isStaff = profile.role === "staff";
   const isApprover = canApprove(profile.role);
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const dateLabel = now.toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric" }).toUpperCase();
-  const hour = now.getHours();
+  // Read date/hour/weekday in the outlet's own timezone rather than the
+  // server's — on a UTC-hosted server this otherwise flips "today", the
+  // greeting, and the weekend flag around midnight Europe/Berlin (same
+  // class of bug periodStartFor() guards against below).
+  const berlinParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    weekday: "short",
+  }).formatToParts(now);
+  const berlinPart = (t: string) => berlinParts.find((p) => p.type === t)?.value ?? "";
+  const today = `${berlinPart("year")}-${berlinPart("month")}-${berlinPart("day")}`;
+  const dateLabel = now
+    .toLocaleDateString("de-DE", { day: "2-digit", month: "long", year: "numeric", timeZone: "Europe/Berlin" })
+    .toUpperCase();
+  const hour = Number(berlinPart("hour"));
   const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
-  const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+  const isWeekend = berlinPart("weekday") === "Sat" || berlinPart("weekday") === "Sun";
 
   const [{ data: items }, { data: tasks }, { data: templates }, { data: latestHandover }, { data: events }] =
     await Promise.all([
@@ -106,7 +122,8 @@ export default async function DashboardPage() {
 
   if (templates && templates.length > 0) {
     const periods = [...new Set(CHECKLIST_TYPES.map((t) => periodStartFor(t)))];
-    const [{ data: submissions }, { data: pendingSubs }] = await Promise.all([
+    const openingTemplate = templates.find((t) => t.name === "opening");
+    const [{ data: submissions }, { data: pendingSubs }, streak] = await Promise.all([
       supabase
         .from("checklist_submissions")
         .select("template_id, status, period_start")
@@ -126,6 +143,7 @@ export default async function DashboardPage() {
             )
             .eq("status", "submitted")
         : Promise.resolve({ data: [] as { template_id: string }[] }),
+      openingTemplate ? computeApprovedStreak(supabase, openingTemplate.id) : Promise.resolve(0),
     ]);
 
     for (const type of CHECKLIST_TYPES) {
@@ -143,10 +161,7 @@ export default async function DashboardPage() {
       firstPendingType = templates.find((t) => t.id === firstPendingTemplateId)?.name as ChecklistType | undefined ?? null;
     }
 
-    const openingTemplate = templates.find((t) => t.name === "opening");
-    if (openingTemplate) {
-      openingStreak = await computeApprovedStreak(supabase, openingTemplate.id);
-    }
+    openingStreak = streak;
   }
 
   const canManage = canManageMasterData(profile.role);
