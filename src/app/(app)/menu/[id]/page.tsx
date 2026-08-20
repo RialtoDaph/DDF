@@ -5,6 +5,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EditMenuItemForm } from "./EditMenuItemForm";
 import { AddIngredientForm } from "./AddIngredientForm";
 import { IngredientRow } from "./IngredientRow";
+import { recipeLineCost, recipeDisplayUnit } from "@/lib/recipeCost";
 
 export default async function MenuItemDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,17 +32,13 @@ export default async function MenuItemDetailPage({ params }: { params: Promise<{
       unit_volume_ml: number | null;
       purchase_price: number | null;
     } | null;
-    // purchase_price is what one stock unit costs (e.g. one bottle) — a
-    // recipe's amount is in ml, so without unit_volume_ml (ml per bottle)
-    // the naive amount * purchase_price treats the price as "per ml" and
-    // massively overcounts. Derive a price-per-ml when it's set.
-    const pricePerMl = item?.unit_volume_ml ? (item.purchase_price ?? 0) / item.unit_volume_ml : (item?.purchase_price ?? 0);
-    const lineCost = r.amount * pricePerMl;
-    // A recipe amount is stored in ml whenever the ingredient has a known
-    // bottle size (see pricePerMl above), even if the ingredient itself is
-    // counted in Flaschen — display it as ml to match, not the stock unit.
-    const unit = item?.unit_volume_ml ? "ml" : (item?.unit ?? "");
-    return { recipeId: r.id, amount: r.amount, name: item?.name ?? "—", unit, lineCost };
+    return {
+      recipeId: r.id,
+      amount: r.amount,
+      name: item?.name ?? "—",
+      unit: recipeDisplayUnit(item),
+      lineCost: recipeLineCost(r.amount, item),
+    };
   });
 
   const totalCost = ingredients.reduce((sum, i) => sum + i.lineCost, 0);

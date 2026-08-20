@@ -8,6 +8,7 @@ import { StampBadge } from "@/components/ui/StampBadge";
 import { CsvExportButton } from "@/components/reports/CsvExportButton";
 import { CHECKLIST_LABEL, periodLabel } from "@/app/(app)/checklists/shared/lib";
 import { formatDate } from "@/lib/utils";
+import { recipeLineCost } from "@/lib/recipeCost";
 import type { ChecklistType } from "@/lib/database.types";
 
 export default async function ReportsPage() {
@@ -29,7 +30,7 @@ export default async function ReportsPage() {
         .order("expiry_date", { ascending: true })
         .limit(50),
       supabase.from("menu_items").select("id, name, sale_price").order("name"),
-      supabase.from("recipes").select("menu_item_id, amount, inventory_items(purchase_price)"),
+      supabase.from("recipes").select("menu_item_id, amount, inventory_items(unit_volume_ml, purchase_price)"),
       supabase.from("tasks").select("assigned_to, status, users!tasks_assigned_to_fkey(name)"),
       supabase
         .from("checklist_submissions")
@@ -41,8 +42,8 @@ export default async function ReportsPage() {
 
   const costByMenuItem = new Map<string, number>();
   for (const r of recipeRows ?? []) {
-    const price = (r.inventory_items as unknown as { purchase_price: number | null } | null)?.purchase_price ?? 0;
-    costByMenuItem.set(r.menu_item_id, (costByMenuItem.get(r.menu_item_id) ?? 0) + r.amount * price);
+    const item = r.inventory_items as unknown as { unit_volume_ml: number | null; purchase_price: number | null } | null;
+    costByMenuItem.set(r.menu_item_id, (costByMenuItem.get(r.menu_item_id) ?? 0) + recipeLineCost(r.amount, item));
   }
 
   const taskByEmployee = new Map<string, { name: string; done: number; total: number }>();

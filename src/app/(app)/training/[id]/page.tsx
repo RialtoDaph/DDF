@@ -8,6 +8,7 @@ import { QuizPlayer } from "./QuizPlayer";
 import { QuizBuilder } from "./QuizBuilder";
 import { AddVideoForm } from "./AddVideoForm";
 import { EditModuleForm } from "./EditModuleForm";
+import { recipeDisplayUnit } from "@/lib/recipeCost";
 
 interface PlayerQuestion {
   id: string;
@@ -39,11 +40,11 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
   if (moduleData.menu_item_id) {
     const { data: recipes } = await supabase
       .from("recipes")
-      .select("id, amount, inventory_items(name, unit)")
+      .select("id, amount, inventory_items(name, unit, unit_volume_ml)")
       .eq("menu_item_id", moduleData.menu_item_id);
     ingredients = (recipes ?? []).map((r) => {
-      const item = r.inventory_items as unknown as { name: string; unit: string } | null;
-      return { recipeId: r.id, amount: r.amount, name: item?.name ?? "—", unit: item?.unit ?? "" };
+      const item = r.inventory_items as unknown as { name: string; unit: string; unit_volume_ml: number | null } | null;
+      return { recipeId: r.id, amount: r.amount, name: item?.name ?? "—", unit: recipeDisplayUnit(item) };
     });
   }
 

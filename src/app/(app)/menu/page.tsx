@@ -3,6 +3,7 @@ import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
+import { recipeLineCost } from "@/lib/recipeCost";
 
 export default async function MenuPage() {
   const profile = await requireProfile();
@@ -10,14 +11,14 @@ export default async function MenuPage() {
 
   const [{ data: menuItems }, { data: recipeRows }] = await Promise.all([
     supabase.from("menu_items").select("id, name, sale_price").order("name"),
-    supabase.from("recipes").select("menu_item_id, amount, inventory_items(purchase_price)"),
+    supabase.from("recipes").select("menu_item_id, amount, inventory_items(unit_volume_ml, purchase_price)"),
   ]);
 
   const costByMenuItem = new Map<string, number>();
   for (const r of recipeRows ?? []) {
-    const price = (r.inventory_items as unknown as { purchase_price: number | null } | null)?.purchase_price ?? 0;
+    const item = r.inventory_items as unknown as { unit_volume_ml: number | null; purchase_price: number | null } | null;
     const current = costByMenuItem.get(r.menu_item_id) ?? 0;
-    costByMenuItem.set(r.menu_item_id, current + r.amount * price);
+    costByMenuItem.set(r.menu_item_id, current + recipeLineCost(r.amount, item));
   }
 
   return (
