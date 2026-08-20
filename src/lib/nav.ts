@@ -4,13 +4,11 @@ import {
   Package,
   ClipboardCheck,
   ListChecks,
-  MessageCircle,
   Truck,
   BookOpenText,
   BookMarked,
   BarChart3,
   Users,
-  GraduationCap,
   ScrollText,
   Settings,
   type LucideIcon,
@@ -38,7 +36,6 @@ const NAV_GROUPS_ALL: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/checklists/opening", label: "Checklisten", icon: ClipboardCheck, roles: ["owner", "manager", "staff"] },
       { href: "/tasks", label: "Aufgaben", icon: ListChecks, roles: ["owner", "manager", "staff"] },
-      { href: "/chat", label: "Chat", icon: MessageCircle, roles: ["owner", "manager", "staff"] },
     ],
   },
   {
@@ -52,8 +49,7 @@ const NAV_GROUPS_ALL: { label: string | null; items: NavItem[] }[] = [
   {
     label: "Wissen",
     items: [
-      { href: "/handbuch", label: "Handbuch", icon: BookMarked, roles: ["owner", "manager", "staff"] },
-      { href: "/training", label: "Training", icon: GraduationCap, roles: ["owner", "manager", "staff"] },
+      { href: "/handbuch", label: "Handbuch & Training", icon: BookMarked, roles: ["owner", "manager", "staff"] },
     ],
   },
   {

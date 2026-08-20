@@ -35,7 +35,7 @@ export async function createModuleRecord(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/training");
+  revalidatePath("/handbuch");
   return { id: module_.id };
 }
 
@@ -61,7 +61,7 @@ export async function updateModuleRecord(_prevState: unknown, formData: FormData
   if (error) return { error: error.message };
 
   revalidatePath(`/training/${id}`);
-  revalidatePath("/training");
+  revalidatePath("/handbuch");
   return { success: true };
 }
 
@@ -133,7 +133,7 @@ export async function submitQuiz(
   if (error) return { error: error.message, score: 0, passed: false };
 
   revalidatePath(`/training/${moduleId}`);
-  revalidatePath("/training");
+  revalidatePath("/handbuch");
   const score: number = data?.[0]?.score ?? 0;
   const passed: boolean = data?.[0]?.passed ?? false;
   return { error: null, score, passed };

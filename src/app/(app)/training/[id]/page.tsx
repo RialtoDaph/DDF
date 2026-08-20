@@ -68,8 +68,8 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
 
   return (
     <div className="space-y-[var(--sp-lg)]">
-      <Link href="/training" className="text-xs text-parchment-dim hover:text-parchment">
-        ← Zurück zu Training
+      <Link href="/handbuch" className="text-xs text-parchment-dim hover:text-parchment">
+        ← Zurück zu Handbuch &amp; Training
       </Link>
 
       <div className="flex items-start justify-between gap-4">
