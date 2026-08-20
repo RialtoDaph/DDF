@@ -25,17 +25,22 @@ export default async function HandbuchPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">Handbuch</h1>
-        <p className="text-sm text-parchment-dim mt-1">
-          Nachschlagen waehrend der Schicht — Ablaeufe, Hausregeln, Geraete.
-        </p>
+    <div className="space-y-[var(--sp-lg)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Handbuch</h1>
+          <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
+            Nachschlagen während der Schicht — Abläufe, Hausregeln, Geräte.
+          </p>
+        </div>
+        {canEdit && (
+          <div className="shrink-0">
+            <NewSectionForm categories={categories} />
+          </div>
+        )}
       </div>
 
       <HandbookBrowser sections={sections ?? []} canEdit={canEdit} />
-
-      {canEdit && <NewSectionForm categories={categories} />}
     </div>
   );
 }
