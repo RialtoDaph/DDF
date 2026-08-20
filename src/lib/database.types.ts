@@ -222,8 +222,6 @@ export interface Database {
           submission_id: string;
           item_text: string;
           checked: boolean;
-          photo_url: string | null;
-          photo_taken_at: string | null;
           created_at: string;
         },
         {
@@ -231,8 +229,21 @@ export interface Database {
           submission_id: string;
           item_text: string;
           checked?: boolean;
-          photo_url?: string | null;
-          photo_taken_at?: string | null;
+        }
+      >;
+      checklist_item_photos: Table<
+        {
+          id: string;
+          item_result_id: string;
+          photo_url: string;
+          taken_at: string;
+          created_at: string;
+        },
+        {
+          id?: string;
+          item_result_id: string;
+          photo_url: string;
+          taken_at: string;
         }
       >;
       training_modules: Table<

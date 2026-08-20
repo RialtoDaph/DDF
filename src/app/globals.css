@@ -25,10 +25,9 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  /* Density scale ("Komfort") — spacing/type ramp driving the density
-     toggle. Screens migrated to the redesign read these vars instead of
-     fixed Tailwind spacing/text-size utilities; unmigrated screens are
-     unaffected either way. */
+  /* Spacing/type ramp. Screens migrated to the redesign read these vars
+     instead of fixed Tailwind spacing/text-size utilities; unmigrated
+     screens are unaffected either way. */
   --sp-xxs: 6px;
   --sp-xs: 8px;
   --sp-sm: 14px;
@@ -40,20 +39,6 @@
   --fs-h2: 17px;
   --fs-body: 14.5px;
   --fs-small: 12px;
-}
-
-:root[data-density="compact"] {
-  --sp-xxs: 4px;
-  --sp-xs: 6px;
-  --sp-sm: 10px;
-  --sp-md: 14px;
-  --sp-lg: 20px;
-  --sp-xl: 28px;
-  --radius-density: 10px;
-  --fs-h1: 25px;
-  --fs-h2: 15px;
-  --fs-body: 13px;
-  --fs-small: 11px;
 }
 
 @theme inline {
