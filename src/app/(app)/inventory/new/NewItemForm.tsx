@@ -29,6 +29,10 @@ export function NewItemForm() {
             <option value="garnish">Garnitur</option>
             <option value="herbs_produce">Frische Kräuter & Früchte</option>
             <option value="juice">Saft</option>
+            <option value="liqueur">Likör</option>
+            <option value="schnapps">Schnaps</option>
+            <option value="syrup">Sirup</option>
+            <option value="bitters">Bitter</option>
             <option value="consumable">Verbrauch</option>
           </Select>
         </div>

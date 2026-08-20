@@ -16,6 +16,10 @@ const CATEGORIES: { value: ItemCategory | "all"; label: string }[] = [
   { value: "garnish", label: "Garnitur" },
   { value: "herbs_produce", label: "Frische Kräuter & Früchte" },
   { value: "juice", label: "Saft" },
+  { value: "liqueur", label: "Likör" },
+  { value: "schnapps", label: "Schnaps" },
+  { value: "syrup", label: "Sirup" },
+  { value: "bitters", label: "Bitter" },
   { value: "consumable", label: "Verbrauch" },
 ];
 
