@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { updateSubmissionMeta, saveHandoverNote } from "./actions";
 import { Input, Label, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -65,11 +65,19 @@ export function HandoverNoteForm({ readOnly }: { readOnly: boolean }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(async (_prev, fd) => {
     return saveHandoverNote(fd);
   }, initialActionState);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Without this, the just-submitted text stays in the (uncontrolled)
+  // textarea after a successful save — a second click of "Notiz
+  // hinterlassen" would silently insert the same note again.
+  useEffect(() => {
+    if (state?.success) formRef.current?.reset();
+  }, [state?.success]);
 
   return (
     <Card>
       <CardHeader title="Übergabenotiz" subtitle="Fuer die naechste Schicht" />
-      <form action={formAction} className="space-y-3">
+      <form ref={formRef} action={formAction} className="space-y-3">
         <Textarea name="content" rows={3} placeholder="Besonderheiten fuer die naechste Schicht…" disabled={readOnly} required />
         {state?.error && <p className="text-sm text-warn">{state.error}</p>}
         {state?.success && <p className="text-sm text-done">Notiz gespeichert.</p>}

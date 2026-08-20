@@ -4,10 +4,11 @@ import { useState, useTransition } from "react";
 import { saveItemResult } from "./actions";
 import { CameraCapture, type CapturedPhoto } from "@/components/camera/CameraCapture";
 import { cn } from "@/lib/utils";
-import type { ChecklistTemplateItem } from "@/lib/database.types";
+import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export function ItemRow({
   submissionId,
+  type,
   item,
   initialChecked,
   initialPhotoUrl,
@@ -15,6 +16,7 @@ export function ItemRow({
   readOnly,
 }: {
   submissionId: string;
+  type: ChecklistType;
   item: ChecklistTemplateItem;
   initialChecked: boolean;
   initialPhotoUrl: string | null;
@@ -35,6 +37,7 @@ export function ItemRow({
     startTransition(async () => {
       const fd = new FormData();
       fd.set("submission_id", submissionId);
+      fd.set("type", type);
       fd.set("item_text", item.text);
       fd.set("checked", String(nextChecked));
       if (capturedPhoto) {

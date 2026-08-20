@@ -56,21 +56,30 @@ export async function saveItemResult(formData: FormData) {
   const supabase = await createClient();
 
   const submissionId = String(formData.get("submission_id"));
+  const type = formData.get("type") ? String(formData.get("type")) : null;
   const itemText = String(formData.get("item_text"));
   const checked = formData.get("checked") === "true";
   const photo = formData.get("photo") as File | null;
   const takenAt = formData.get("taken_at") ? String(formData.get("taken_at")) : null;
 
+  const { data: submission } = await supabase
+    .from("checklist_submissions")
+    .select("id, status, checklist_templates(outlet_id)")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) return { error: "Eintrag nicht gefunden." };
+  // The UI already disables inputs once readOnly is true, but that's a
+  // stale prop from the last render — without this the server would still
+  // accept edits to an already-submitted (or approved) report.
+  if (submission.status !== "draft") {
+    return { error: "Diese Checkliste ist bereits eingereicht und kann nicht mehr bearbeitet werden." };
+  }
+
   let photoPath: string | null = null;
 
   if (photo && photo.size > 0) {
-    const { data: submission } = await supabase
-      .from("checklist_submissions")
-      .select("id, template_id, checklist_templates(outlet_id)")
-      .eq("id", submissionId)
-      .single();
-
-    const outletId = (submission?.checklist_templates as unknown as { outlet_id: string } | null)?.outlet_id;
+    const outletId = (submission.checklist_templates as unknown as { outlet_id: string } | null)?.outlet_id;
     if (!outletId) return { error: "Vorlage nicht gefunden." };
 
     photoPath = `${outletId}/${submissionId}/${slugify(itemText)}-${Date.now()}.jpg`;
@@ -81,7 +90,7 @@ export async function saveItemResult(formData: FormData) {
     if (uploadError) return { error: uploadError.message };
   }
 
-  const { error } = await supabase
+  const { data: upserted, error } = await supabase
     .from("checklist_item_results")
     .upsert(
       {
@@ -91,11 +100,13 @@ export async function saveItemResult(formData: FormData) {
         ...(photoPath ? { photo_url: photoPath, photo_taken_at: takenAt } : {}),
       },
       { onConflict: "submission_id,item_text" },
-    );
+    )
+    .select("submission_id")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !upserted) return { error: error?.message ?? "Speichern fehlgeschlagen." };
 
-  revalidatePath(`/checklists`);
+  if (type) revalidatePath(`/checklists/${type}`);
   return { success: true, photoPath };
 }
 
@@ -104,16 +115,30 @@ export async function updateSubmissionMeta(formData: FormData) {
   const supabase = await createClient();
   const submissionId = String(formData.get("submission_id"));
 
-  const { error } = await supabase
+  const { data: submission } = await supabase
+    .from("checklist_submissions")
+    .select("id, status")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) return { error: "Eintrag nicht gefunden." };
+  if (submission.status !== "draft") {
+    return { error: "Diese Checkliste ist bereits eingereicht und kann nicht mehr bearbeitet werden." };
+  }
+
+  const { data: updated, error } = await supabase
     .from("checklist_submissions")
     .update({
       shift: String(formData.get("shift") ?? "") || null,
       cash_count: formData.get("cash_count") ? Number(formData.get("cash_count")) : null,
       incident_notes: String(formData.get("incident_notes") ?? "") || null,
     })
-    .eq("id", submissionId);
+    .eq("id", submissionId)
+    .select("id")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !updated) return { error: error?.message ?? "Speichern fehlgeschlagen." };
+  revalidatePath("/checklists/closing");
   return { success: true };
 }
 
@@ -137,13 +162,20 @@ export async function saveHandoverNote(formData: FormData) {
 export async function submitChecklist(submissionId: string, type: ChecklistType) {
   await requireProfile();
   const supabase = await createClient();
-  const { error } = await supabase
+  // The status filter both guards against double-submitting and lets us
+  // tell "already submitted by someone else" apart from a real DB error —
+  // Supabase reports 0-row updates as success (error: null), so without a
+  // check here the button would look like it worked either way.
+  const { data: updated, error } = await supabase
     .from("checklist_submissions")
     .update({ status: "submitted", submitted_at: new Date().toISOString() })
-    .eq("id", submissionId);
+    .eq("id", submissionId)
+    .eq("status", "draft")
+    .select("id")
+    .single();
 
-  if (error) {
-    return { error: error.message };
+  if (error || !updated) {
+    return { error: error?.message ?? "Konnte nicht eingereicht werden — bereits eingereicht?" };
   }
 
   revalidatePath(`/checklists/${type}`);
@@ -156,12 +188,17 @@ export async function approveChecklist(submissionId: string, type: ChecklistType
   if (!canApprove(profile.role)) return { error: "Keine Berechtigung." };
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("checklist_submissions")
     .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: profile.id })
-    .eq("id", submissionId);
+    .eq("id", submissionId)
+    .eq("status", "submitted")
+    .select("id")
+    .single();
 
-  if (error) return { error: error.message };
+  if (error || !updated) {
+    return { error: error?.message ?? "Konnte nicht freigegeben werden — bereits bearbeitet?" };
+  }
   await logAudit(supabase, profile.id, "checklist_approved", "checklist_submissions", { submission_id: submissionId });
   revalidatePath(`/checklists/${type}`);
   return { success: true };

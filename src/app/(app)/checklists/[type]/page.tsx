@@ -124,6 +124,7 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
       <ChecklistSections
         submissionId={submission.id}
+        type={type}
         items={items}
         results={resultMap}
         readOnly={readOnly}

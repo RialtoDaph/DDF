@@ -21,7 +21,20 @@ export function isChecklistType(value: string): value is ChecklistType {
  * is why submissions are keyed by this rather than by the calendar date.
  */
 export function periodStartFor(type: ChecklistType, now = new Date()): string {
-  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  // Read the calendar date in the outlet's own timezone rather than the
+  // server's — mixing server-local Y/M/D with a UTC-labeled date flips the
+  // day (and the weekly Monday / monthly 1st boundary) around midnight
+  // Europe/Berlin on a UTC-hosted server, worse near DST changes.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  const day = Number(parts.find((p) => p.type === "day")?.value);
+  const d = new Date(Date.UTC(year, month - 1, day));
 
   if (type === "weekly") {
     const mondayOffset = (d.getUTCDay() + 6) % 7;
