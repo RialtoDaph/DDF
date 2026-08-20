@@ -158,7 +158,9 @@ function SidebarContent({
               const active =
                 item.href === "/checklists/opening"
                   ? pathname.startsWith("/checklists")
-                  : pathname === item.href || pathname.startsWith(item.href + "/");
+                  : item.href === "/handbuch"
+                    ? pathname.startsWith("/handbuch") || pathname.startsWith("/training")
+                    : pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (
                 <Link
