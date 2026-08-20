@@ -4,13 +4,24 @@ import { ApproveButton } from "./ApproveButton";
 import { formatTimestamp } from "@/lib/utils";
 import type { ChecklistType } from "@/lib/database.types";
 
-export async function PendingApprovals({ templateId, type }: { templateId: string; type: ChecklistType }) {
+export async function PendingApprovals({
+  templateId,
+  type,
+  currentUserId,
+}: {
+  templateId: string;
+  type: ChecklistType;
+  currentUserId: string;
+}) {
   const supabase = await createClient();
   const { data: submissions } = await supabase
     .from("checklist_submissions")
     .select("id, submitted_at, users!checklist_submissions_user_id_fkey(name)")
     .eq("template_id", templateId)
     .eq("status", "submitted")
+    // Never list the viewer's own submission here — approving your own work
+    // isn't a real approval. It stays "Eingereicht" until someone else does.
+    .neq("user_id", currentUserId)
     .order("submitted_at", { ascending: false });
 
   if (!submissions || submissions.length === 0) return null;

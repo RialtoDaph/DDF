@@ -53,6 +53,7 @@ export default async function ChecklistSettingsPage() {
           <TemplateEditor
             key={type}
             templateId={template.id}
+            type={type}
             title={SUBTITLE[type] ?? CHECKLIST_LABEL[type]}
             items={(template.items as ChecklistTemplateItem[]) ?? []}
           />

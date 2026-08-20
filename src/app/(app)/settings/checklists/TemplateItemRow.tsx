@@ -6,29 +6,31 @@ import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
 import { X, Pencil, ChevronUp, ChevronDown } from "lucide-react";
-import type { ChecklistTemplateItem } from "@/lib/database.types";
-
-const CATEGORIES = [
-  { value: "allgemein", label: "Allgemein" },
-  { value: "verschluss", label: "Verschluss" },
-  { value: "sauberkeit", label: "Sauberkeit" },
-  { value: "geraete", label: "Geräte" },
-  { value: "beleuchtung", label: "Beleuchtung" },
-];
+import { categoryOptionsFor } from "@/app/(app)/checklists/shared/lib";
+import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export function TemplateItemRow({
   templateId,
+  type,
   index,
   item,
   isFirst,
   isLast,
 }: {
   templateId: string;
+  type: ChecklistType;
   index: number;
   item: ChecklistTemplateItem;
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const categoryOptions = categoryOptionsFor(type);
+  // The item may already hold a category outside the current allow-list
+  // (leftover bad data, or a template that used to be closing) — keep it
+  // selectable so editing the item doesn't silently reassign its category.
+  const options = categoryOptions.some((c) => c.value === item.category)
+    ? categoryOptions
+    : [...categoryOptions, { value: item.category, label: item.category }];
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [state, formAction, savePending] = useActionState<ActionState, FormData>(
@@ -50,7 +52,7 @@ export function TemplateItemRow({
             <div>
               <Label htmlFor={`edit-category-${templateId}-${index}`}>Kategorie</Label>
               <Select id={`edit-category-${templateId}-${index}`} name="category" defaultValue={item.category}>
-                {CATEGORIES.map((c) => (
+                {options.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
                   </option>

@@ -1,24 +1,40 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { addTemplateItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { type ActionState, initialActionState } from "@/lib/actionState";
 import { TemplateItemRow } from "./TemplateItemRow";
-import type { ChecklistTemplateItem } from "@/lib/database.types";
+import { categoryOptionsFor } from "@/app/(app)/checklists/shared/lib";
+import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export function TemplateEditor({
   templateId,
+  type,
   title,
   items,
 }: {
   templateId: string;
+  type: ChecklistType;
   title: string;
   items: ChecklistTemplateItem[];
 }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(addTemplateItem, initialActionState);
+  const categoryOptions = categoryOptionsFor(type);
+  const [prevSuccess, setPrevSuccess] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+
+  // Clear the "Neuer Punkt" form once the item is saved — otherwise the
+  // typed text just sits there with no confirmation, indistinguishable
+  // from the save having silently failed.
+  if (state.success && !prevSuccess) {
+    setPrevSuccess(true);
+    setResetKey((k) => k + 1);
+  } else if (!state.success && prevSuccess) {
+    setPrevSuccess(false);
+  }
 
   return (
     <Card>
@@ -29,6 +45,7 @@ export function TemplateEditor({
             <TemplateItemRow
               key={`${item.text}-${i}`}
               templateId={templateId}
+              type={type}
               index={i}
               item={item}
               isFirst={i === 0}
@@ -38,7 +55,7 @@ export function TemplateEditor({
         </ul>
       )}
 
-      <form action={formAction} className="space-y-3 pt-2 border-t border-ink-border">
+      <form key={resetKey} action={formAction} className="space-y-3 pt-2 border-t border-ink-border">
         <input type="hidden" name="template_id" value={templateId} />
         <div>
           <Label htmlFor={`text-${templateId}`}>Neuer Punkt</Label>
@@ -48,11 +65,11 @@ export function TemplateEditor({
           <div>
             <Label htmlFor={`category-${templateId}`}>Kategorie</Label>
             <Select id={`category-${templateId}`} name="category" defaultValue="allgemein">
-              <option value="allgemein">Allgemein</option>
-              <option value="verschluss">Verschluss</option>
-              <option value="sauberkeit">Sauberkeit</option>
-              <option value="geraete">Geräte</option>
-              <option value="beleuchtung">Beleuchtung</option>
+              {categoryOptions.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
             </Select>
           </div>
           <label className="flex items-center gap-2 text-sm text-parchment-dim self-end pb-2">

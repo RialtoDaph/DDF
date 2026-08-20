@@ -1,6 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ItemRow } from "./ItemRow";
-import { ROUND_CHECK_CATEGORIES, ROUND_CHECK_LABEL } from "./lib";
+import { ROUND_CHECK_CATEGORIES, ROUND_CHECK_LABEL, isItemVisible } from "./lib";
 import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export interface ItemResultMap {
@@ -28,7 +28,7 @@ export function ChecklistSections({
   subtitle?: string;
   right?: React.ReactNode;
 }) {
-  const general = items.filter((i) => !ROUND_CHECK_CATEGORIES.includes(i.category as never));
+  const general = items.filter((i) => isItemVisible(i, false));
   const roundCheck = ROUND_CHECK_CATEGORIES.map((cat) => ({
     category: cat,
     items: items.filter((i) => i.category === cat),

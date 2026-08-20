@@ -18,7 +18,7 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
   const { data: submission } = await supabase
     .from("checklist_submissions")
     .select(
-      "id, date, period_start, shift, cash_count, incident_notes, status, submitted_at, users!checklist_submissions_user_id_fkey(name), checklist_templates(name)",
+      "id, date, period_start, shift, cash_count, incident_notes, status, submitted_at, user_id, users!checklist_submissions_user_id_fkey(name), checklist_templates(name)",
     )
     .eq("id", id)
     .single();
@@ -65,7 +65,9 @@ export default async function ClosingReportDetailPage({ params }: { params: Prom
           {submission.status === "submitted" && (
             <>
               <StampBadge variant="warn">Eingereicht</StampBadge>
-              {canApprove(profile.role) && type && <ApproveButton submissionId={submission.id} type={type} />}
+              {canApprove(profile.role) && type && submission.user_id !== profile.id && (
+                <ApproveButton submissionId={submission.id} type={type} />
+              )}
             </>
           )}
         </div>

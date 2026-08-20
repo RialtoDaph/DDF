@@ -33,7 +33,12 @@ export function ItemRow({
 
   const satisfied = checked && (!item.requires_photo || !!photo);
 
-  function persist(nextChecked: boolean, capturedPhoto?: CapturedPhoto) {
+  // The checkbox/photo update optimistically before the server confirms it
+  // (so tapping feels instant), but without a rollback a failed save (bad
+  // upload, network blip, RLS reject) left the row showing checked/photo'd
+  // forever — indistinguishable from a real save, easy to miss the small
+  // error text underneath and walk away thinking the item was done.
+  function persist(nextChecked: boolean, capturedPhoto: CapturedPhoto | undefined, rollback: () => void) {
     setError(null);
     startTransition(async () => {
       const fd = new FormData();
@@ -46,28 +51,42 @@ export function ItemRow({
         fd.set("taken_at", capturedPhoto.takenAt);
       }
       const res = await saveItemResult(fd);
-      if (res?.error) setError(res.error);
+      if (res?.error) {
+        setError(res.error);
+        rollback();
+      }
     });
   }
 
   function handleToggle() {
     if (readOnly || item.requires_photo) return;
+    const prevChecked = checked;
     const next = !checked;
     setChecked(next);
-    persist(next);
+    persist(next, undefined, () => setChecked(prevChecked));
   }
 
   function handleCapture(p: CapturedPhoto) {
+    const prevChecked = checked;
+    const prevPhoto = photo;
     setPhoto(p);
     setChecked(true);
     setCaptureOpen(false);
-    persist(true, p);
+    persist(true, p, () => {
+      setChecked(prevChecked);
+      setPhoto(prevPhoto);
+    });
   }
 
   function handleClearPhoto() {
+    const prevChecked = checked;
+    const prevPhoto = photo;
     setPhoto(null);
     setChecked(false);
-    persist(false);
+    persist(false, undefined, () => {
+      setChecked(prevChecked);
+      setPhoto(prevPhoto);
+    });
   }
 
   return (

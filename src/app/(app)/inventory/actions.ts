@@ -51,13 +51,23 @@ export async function recordMovement(_prevState: unknown, formData: FormData) {
 
   const itemId = String(formData.get("item_id") ?? "");
   const reason = formData.get("reason") as MovementReason;
-  const type: MovementType = reason === "restock" ? "in" : "out";
+  // "Korrektur" can go either way (a physical count can turn up more stock
+  // than the system shows, not just less) — restock is always "in", usage
+  // and waste are always "out", and adjustment follows whichever direction
+  // was picked, defaulting to "out" to match the previous (decrease-only)
+  // behavior if the field is somehow missing.
+  const type: MovementType =
+    reason === "restock" ? "in" : reason === "adjustment" && formData.get("adjustment_direction") === "in" ? "in" : "out";
 
   if (reason === "adjustment" && !canManageMasterData(profile.role)) {
     return { error: "Bestandskorrekturen erfordern Freigabe durch Manager oder Owner." };
   }
 
   const quantity = Number(formData.get("quantity") ?? 0);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return { error: "Bitte eine gueltige Menge groesser als 0 angeben." };
+  }
+
   const { error } = await supabase.from("stock_movements").insert({
     item_id: itemId,
     type,
