@@ -49,6 +49,23 @@ export class UploadCancelledError extends Error {
   }
 }
 
+// ffmpeg.wasm's compression pass loads the ~32 MB wasm core plus the full
+// source video into memory (twice over — once as the JS Uint8Array, once
+// inside the wasm heap) before it can even start transcoding. Desktop
+// browsers have enough headroom for that; phones and tablets — iOS Safari
+// in particular — enforce a much tighter per-tab memory ceiling and simply
+// kill the page when it's exceeded, with no catchable JS error. That silent
+// kill is what "upload doesn't work on phone but works on laptop" actually
+// is, so on these devices we skip the risky compression pass entirely.
+function isMemoryConstrainedDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (typeof deviceMemory === "number") return deviceMemory <= 4;
+  // Safari (where this bites hardest) never exposes deviceMemory — fall
+  // back to a UA check for phones/tablets.
+  return /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent);
+}
+
 // A JS-level setTimeout is not a reliable backstop on iOS Safari: the tab
 // can be suspended (screen lock, switching to the native Photos picker,
 // memory pressure) and its timers frozen along with it, so a stuck request
@@ -205,24 +222,37 @@ async function runUpload(
   if (signal.aborted) throw new UploadCancelledError();
 
   if (video.size > COMPRESS_THRESHOLD_BYTES) {
-    onProgress?.("preparing", 0);
-    try {
-      toUpload = await withTimeout(
-        compressVideo(video, (ratio) => onProgress?.("compressing", ratio), signal),
-        PHASE_TIMEOUT_MS,
-        "Komprimierung dauert ungewöhnlich lange (Verbindung zu langsam oder Video zu groß). Bitte erneut versuchen oder ein kürzeres Video wählen.",
-      );
-    } catch (err) {
-      if (signal.aborted || err instanceof UploadCancelledError) throw new UploadCancelledError();
-      return {
-        error: "Komprimierung im Browser fehlgeschlagen. Bitte Video manuell verkleinern oder ein kürzeres Video wählen.",
-      };
-    }
+    const constrained = isMemoryConstrainedDevice();
 
-    if (toUpload.size > MAX_VIDEO_BYTES) {
+    if (constrained && video.size <= MAX_VIDEO_BYTES) {
+      // Fits under the hard cap as-is — skip the wasm compression pass
+      // rather than risk this device's tab getting killed for no benefit.
+    } else if (constrained) {
       return {
-        error: `Video ist auch nach automatischer Komprimierung noch zu groß (${(toUpload.size / (1024 * 1024)).toFixed(0)} MB). Bitte ein kürzeres Video wählen.`,
+        error:
+          `Video ist zu groß (${(video.size / (1024 * 1024)).toFixed(0)} MB) für automatische Komprimierung auf diesem Gerät. ` +
+          "Bitte Video vorher kürzen/verkleinern (z. B. in der Kamera-App) oder von einem Laptop/PC hochladen.",
       };
+    } else {
+      onProgress?.("preparing", 0);
+      try {
+        toUpload = await withTimeout(
+          compressVideo(video, (ratio) => onProgress?.("compressing", ratio), signal),
+          PHASE_TIMEOUT_MS,
+          "Komprimierung dauert ungewöhnlich lange (Verbindung zu langsam oder Video zu groß). Bitte erneut versuchen oder ein kürzeres Video wählen.",
+        );
+      } catch (err) {
+        if (signal.aborted || err instanceof UploadCancelledError) throw new UploadCancelledError();
+        return {
+          error: "Komprimierung im Browser fehlgeschlagen. Bitte Video manuell verkleinern oder ein kürzeres Video wählen.",
+        };
+      }
+
+      if (toUpload.size > MAX_VIDEO_BYTES) {
+        return {
+          error: `Video ist auch nach automatischer Komprimierung noch zu groß (${(toUpload.size / (1024 * 1024)).toFixed(0)} MB). Bitte ein kürzeres Video wählen.`,
+        };
+      }
     }
   }
 

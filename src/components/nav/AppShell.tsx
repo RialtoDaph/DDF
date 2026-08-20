@@ -13,7 +13,6 @@ import { signOut } from "@/app/auth/actions";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
-import { DensityToggle } from "@/components/ui/DensityToggle";
 import { FloatingChat } from "@/components/chat/FloatingChat";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -108,7 +107,6 @@ export function AppShell({
         <div className="hidden md:flex items-center justify-between gap-4 px-8 pt-4">
           <GlobalSearch index={searchIndex} className="w-64" />
           <div className="flex items-center gap-3">
-            <DensityToggle />
             <NotificationBell notifications={notifications} />
           </div>
         </div>
