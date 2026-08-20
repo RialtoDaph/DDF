@@ -14,6 +14,9 @@ export function ChecklistSections({
   results,
   readOnly,
   includeRoundCheck,
+  title,
+  subtitle,
+  right,
 }: {
   submissionId: string;
   type: ChecklistType;
@@ -21,6 +24,9 @@ export function ChecklistSections({
   results: ItemResultMap;
   readOnly: boolean;
   includeRoundCheck: boolean;
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
 }) {
   const general = items.filter((i) => !ROUND_CHECK_CATEGORIES.includes(i.category as never));
   const roundCheck = ROUND_CHECK_CATEGORIES.map((cat) => ({
@@ -29,9 +35,9 @@ export function ChecklistSections({
   })).filter((g) => g.items.length > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--sp-lg)]">
       <Card>
-        <CardHeader title="Checkliste" />
+        <CardHeader title={title} subtitle={subtitle} right={right} />
         <ul className="divide-y divide-ink-border">
           {general.map((item) => (
             <ItemRow

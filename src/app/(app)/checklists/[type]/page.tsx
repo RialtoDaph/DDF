@@ -14,10 +14,12 @@ import {
 } from "../shared/lib";
 import { ChecklistSections, type ItemResultMap } from "../shared/ChecklistSections";
 import { SubmitBar } from "../shared/SubmitBar";
+import { ApproveButton } from "../shared/ApproveButton";
 import { CreateTemplateButton } from "../shared/CreateTemplateButton";
 import { PendingApprovals } from "../shared/PendingApprovals";
 import { ClosingMetaForm, HandoverNoteForm } from "../shared/ClosingExtras";
 import { Card } from "@/components/ui/Card";
+import { StampBadge } from "@/components/ui/StampBadge";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
 
 export default async function ChecklistPage({ params }: { params: Promise<{ type: string }> }) {
@@ -28,17 +30,24 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
   const profile = await requireProfile();
   const label = CHECKLIST_LABEL[type];
 
+  const header = (
+    <div>
+      <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Checklisten</h1>
+      <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
+        Fotopflichtige Punkte erfordern eine Live-Aufnahme.
+      </p>
+    </div>
+  );
+
   const tabs = (
-    <div className="flex gap-1 border-b border-ink-border overflow-x-auto">
+    <div className="flex gap-1 rounded-[9px] bg-ink-card p-1 w-fit overflow-x-auto">
       {CHECKLIST_TYPES.map((t) => (
         <Link
           key={t}
           href={`/checklists/${t}`}
           className={cn(
-            "px-3 py-2 text-sm whitespace-nowrap border-b-2 -mb-px transition-colors",
-            t === type
-              ? "border-wine text-wine"
-              : "border-transparent text-parchment-dim hover:text-parchment",
+            "rounded-lg px-5 py-2 text-[length:var(--fs-body)] whitespace-nowrap transition-colors",
+            t === type ? "bg-wine-deep text-parchment" : "text-parchment-dim hover:text-parchment",
           )}
         >
           {CHECKLIST_LABEL[t]}
@@ -64,11 +73,13 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
   if (!template) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-[var(--sp-lg)]">
+        {header}
         {tabs}
-        <h1 className="font-serif text-2xl text-parchment">{label}</h1>
         <Card>
-          <p className="text-sm text-parchment-dim mb-3">Fuer diesen Standort ist noch keine Vorlage angelegt.</p>
+          <p className="text-sm text-parchment-dim mb-3">
+            Fuer diesen Standort ist noch keine {label}-Vorlage angelegt.
+          </p>
           {canManageMasterData(profile.role) ? (
             <CreateTemplateButton type={type} />
           ) : (
@@ -104,13 +115,22 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
   const readOnly = submission.status !== "draft";
   const isClosing = type === "closing";
 
+  const statusBadge = (
+    <div className="flex items-center gap-2 shrink-0">
+      {submission.status === "approved" && <StampBadge>Freigegeben</StampBadge>}
+      {submission.status === "submitted" && (
+        <>
+          <StampBadge>Eingereicht</StampBadge>
+          {canApprove(profile.role) && <ApproveButton submissionId={submission.id} type={type} />}
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-[var(--sp-lg)] pb-24">
+      {header}
       {tabs}
-      <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">{label}</h1>
-        <p className="text-sm text-parchment-dim mt-1">{periodLabel(type, submission.period_start)}</p>
-      </div>
 
       {isClosing && (
         <ClosingMetaForm
@@ -129,6 +149,9 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
         results={resultMap}
         readOnly={readOnly}
         includeRoundCheck={isClosing}
+        title={`${label} Checkliste`}
+        subtitle={periodLabel(type, submission.period_start)}
+        right={statusBadge}
       />
 
       {isClosing && <HandoverNoteForm readOnly={readOnly} />}
@@ -138,7 +161,6 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
         type={type}
         status={submission.status}
         allSatisfied={allSatisfied}
-        canApproveRole={canApprove(profile.role)}
       />
 
       {canApprove(profile.role) && <PendingApprovals templateId={template.id} type={type} />}
