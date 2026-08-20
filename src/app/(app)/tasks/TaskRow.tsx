@@ -2,7 +2,6 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { setTaskStatus, updateTask, deleteTask } from "./actions";
-import { StampBadge } from "@/components/ui/StampBadge";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
@@ -120,11 +119,11 @@ export function TaskRow({
         disabled={pending}
         aria-label={done ? "Als offen markieren" : "Als erledigt markieren"}
         className={cn(
-          "mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors",
+          "mt-0.5 h-[18px] w-[18px] shrink-0 rounded-[5px] border-[1.5px] flex items-center justify-center transition-colors",
           done ? "bg-done border-done" : "border-ink-border hover:border-wine",
         )}
       >
-        {done && <span className="text-ink text-xs">✓</span>}
+        {done && <span className="text-ink text-[10px]">✓</span>}
       </button>
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm", done ? "text-parchment-dim line-through" : "text-parchment")}>{task.title}</p>
@@ -162,7 +161,6 @@ export function TaskRow({
           </button>
         </div>
       )}
-      {done && <StampBadge>Erledigt</StampBadge>}
     </li>
   );
 }

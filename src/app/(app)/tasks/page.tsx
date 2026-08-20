@@ -27,11 +27,11 @@ export default async function TasksPage() {
   const done = (tasks ?? []).filter((t) => t.status === "done");
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-[var(--sp-lg)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl text-parchment">Aufgaben</h1>
-          <p className="text-sm text-parchment-dim mt-1">
+          <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Aufgaben</h1>
+          <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
             {canAssign ? "Alle Aufgaben im Betrieb." : "Deine zugewiesenen Aufgaben."}
           </p>
         </div>
