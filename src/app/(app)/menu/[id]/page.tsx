@@ -1,10 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { DetailShell } from "@/components/ui/DetailShell";
 import { EditMenuItemForm } from "./EditMenuItemForm";
 import { AddIngredientForm } from "./AddIngredientForm";
 import { IngredientRow } from "./IngredientRow";
+import { IngredientsCard } from "./IngredientsCard";
 import { recipeLineCost, recipeDisplayUnit } from "@/lib/recipeCost";
 
 export default async function MenuItemDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,57 +49,51 @@ export default async function MenuItemDetailPage({ params }: { params: Promise<{
   const marginPct = menuItem.sale_price > 0 ? (margin / menuItem.sale_price) * 100 : 0;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">{menuItem.name}</h1>
+    <>
+      <Link href="/menu" className="text-xs text-parchment-dim hover:text-parchment">
+        ← Zurück zu Menü &amp; Rezepte
+      </Link>
+
+      <div className="mt-[var(--sp-md)]">
+        <DetailShell
+          title={menuItem.name}
+          subtitle={`VK ${menuItem.sale_price.toFixed(2)} € · Kosten ${totalCost.toFixed(2)} € · Marge ${margin.toFixed(2)} € (${marginPct.toFixed(0)}%)`}
+          canManage={canManage}
+          editForm={
+            <Card>
+              <CardHeader title="Stammdaten" />
+              <EditMenuItemForm item={menuItem} />
+            </Card>
+          }
+        >
+          <div className="mt-[var(--sp-lg)]">
+            <IngredientsCard
+              canManage={canManage}
+              list={
+                ingredients.length === 0 ? (
+                  <p className="text-sm text-parchment-dim">Noch keine Zutaten hinterlegt.</p>
+                ) : (
+                  <ul className="divide-y divide-ink-border">
+                    {ingredients.map((i) => (
+                      <IngredientRow
+                        key={i.recipeId}
+                        recipeId={i.recipeId}
+                        menuItemId={menuItem.id}
+                        name={i.name}
+                        unit={i.unit}
+                        amount={i.amount}
+                        lineCost={i.lineCost}
+                        canManage={canManage}
+                      />
+                    ))}
+                  </ul>
+                )
+              }
+              addForm={<AddIngredientForm menuItemId={menuItem.id} items={items ?? []} />}
+            />
+          </div>
+        </DetailShell>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <p className="text-xs text-parchment-dim">Verkaufspreis</p>
-          <p className="tabular text-xl text-parchment mt-1">{menuItem.sale_price.toFixed(2)} €</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-parchment-dim">Zutatenkosten</p>
-          <p className="tabular text-xl text-parchment mt-1">{totalCost.toFixed(2)} €</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-parchment-dim">Marge</p>
-          <p className={`tabular text-xl mt-1 ${margin >= 0 ? "text-done" : "text-warn"}`}>
-            {margin.toFixed(2)} € ({marginPct.toFixed(0)}%)
-          </p>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader title="Rezeptur" />
-        {ingredients.length === 0 ? (
-          <p className="text-sm text-parchment-dim">Noch keine Zutaten hinterlegt.</p>
-        ) : (
-          <ul className="divide-y divide-ink-border mb-4">
-            {ingredients.map((i) => (
-              <IngredientRow
-                key={i.recipeId}
-                recipeId={i.recipeId}
-                menuItemId={menuItem.id}
-                name={i.name}
-                unit={i.unit}
-                amount={i.amount}
-                lineCost={i.lineCost}
-                canManage={canManage}
-              />
-            ))}
-          </ul>
-        )}
-        {canManage && <AddIngredientForm menuItemId={menuItem.id} items={items ?? []} />}
-      </Card>
-
-      {canManage && (
-        <Card>
-          <CardHeader title="Stammdaten" />
-          <EditMenuItemForm item={menuItem} />
-        </Card>
-      )}
-    </div>
+    </>
   );
 }
