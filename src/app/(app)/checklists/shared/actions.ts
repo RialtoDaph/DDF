@@ -239,7 +239,7 @@ export async function saveHandoverNote(formData: FormData) {
 }
 
 export async function submitChecklist(submissionId: string, type: ChecklistType) {
-  await requireProfile();
+  const profile = await requireProfile();
   const supabase = await createClient();
   // The status filter both guards against double-submitting and lets us
   // tell "already submitted by someone else" apart from a real DB error —
@@ -256,6 +256,8 @@ export async function submitChecklist(submissionId: string, type: ChecklistType)
   if (error || !updated) {
     return { error: error?.message ?? "Konnte nicht eingereicht werden — bereits eingereicht?" };
   }
+
+  await logAudit(supabase, profile.id, "checklist_submitted", "checklist_submissions", { submission_id: submissionId });
 
   revalidatePath(`/checklists/${type}`);
   revalidatePath("/dashboard");
