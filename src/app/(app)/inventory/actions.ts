@@ -23,23 +23,30 @@ export async function createItem(_prevState: unknown, formData: FormData) {
     return { error: "Bitte Volumen pro Flasche (ml) angeben — sonst wird die Rezeptkalkulation falsch." };
   }
 
+  const name = String(formData.get("name") ?? "").trim();
   const supabase = await createClient();
-  const { error } = await supabase.from("inventory_items").insert({
-    name: String(formData.get("name") ?? "").trim(),
-    category: formData.get("category") as ItemCategory,
-    unit,
-    unit_volume_ml: unitVolumeMl,
-    par_level: Number(formData.get("par_level") ?? 0),
-    current_stock: Number(formData.get("current_stock") ?? 0),
-    purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
-    is_perishable: formData.get("is_perishable") === "on",
-    default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
-    outlet_id: profile.outlet_id,
-  });
+  const { data, error } = await supabase
+    .from("inventory_items")
+    .insert({
+      name,
+      category: formData.get("category") as ItemCategory,
+      unit,
+      unit_volume_ml: unitVolumeMl,
+      par_level: Number(formData.get("par_level") ?? 0),
+      current_stock: Number(formData.get("current_stock") ?? 0),
+      purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
+      is_perishable: formData.get("is_perishable") === "on",
+      default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
+      outlet_id: profile.outlet_id,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
+
+  await logAudit(supabase, profile.id, "inventory_item_create", "inventory_items", { item_id: data.id, name });
 
   revalidatePath("/inventory");
   redirect("/inventory");
@@ -96,16 +103,18 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
     return { error: "Bitte Volumen pro Flasche (ml) angeben — sonst wird die Rezeptkalkulation falsch." };
   }
 
+  const name = String(formData.get("name") ?? "").trim();
+  const purchasePrice = formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null;
   const supabase = await createClient();
   const { error } = await supabase
     .from("inventory_items")
     .update({
-      name: String(formData.get("name") ?? "").trim(),
+      name,
       category: formData.get("category") as ItemCategory,
       unit,
       unit_volume_ml: unitVolumeMl,
       par_level: Number(formData.get("par_level") ?? 0),
-      purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
+      purchase_price: purchasePrice,
       is_perishable: formData.get("is_perishable") === "on",
       default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
     })
@@ -114,6 +123,12 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
   if (error) {
     return { error: error.message };
   }
+
+  await logAudit(supabase, profile.id, "inventory_item_update", "inventory_items", {
+    item_id: id,
+    name,
+    purchase_price: purchasePrice,
+  });
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath("/inventory");

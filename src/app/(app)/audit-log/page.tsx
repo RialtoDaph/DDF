@@ -7,8 +7,18 @@ import { formatTimestamp } from "@/lib/utils";
 const ACTION_LABEL: Record<string, string> = {
   stock_adjustment: "Bestandskorrektur",
   checklist_approved: "Checkliste freigegeben",
+  checklist_submitted: "Checkliste eingereicht",
   user_updated: "Benutzer geändert",
+  inventory_item_create: "Artikel angelegt",
+  inventory_item_update: "Artikel geändert",
   inventory_item_delete: "Artikel gelöscht",
+  menu_item_create: "Menüpunkt angelegt",
+  menu_item_update: "Menüpunkt geändert",
+  recipe_ingredient_add: "Zutat zum Rezept hinzugefügt",
+  recipe_ingredient_remove: "Zutat aus Rezept entfernt",
+  supplier_create: "Lieferant angelegt",
+  supplier_update: "Lieferant geändert",
+  supplier_price_add: "Lieferantenpreis erfasst",
 };
 
 export default async function AuditLogPage() {
