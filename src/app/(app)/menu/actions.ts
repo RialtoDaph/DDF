@@ -87,13 +87,17 @@ export async function addIngredient(_prevState: unknown, formData: FormData) {
 
 export async function removeIngredient(recipeId: string, menuItemId: string) {
   const profile = await requireProfile();
-  if (!canManageMasterData(profile.role)) return;
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
 
   const supabase = await createClient();
-  await supabase.from("recipes").delete().eq("id", recipeId);
+  const { error } = await supabase.from("recipes").delete().eq("id", recipeId);
+  if (error) return { error: error.message };
+
   await logAudit(supabase, profile.id, "recipe_ingredient_remove", "recipes", {
     recipe_id: recipeId,
     menu_item_id: menuItemId,
   });
+
   revalidatePath(`/menu/${menuItemId}`);
+  return { success: true };
 }

@@ -36,8 +36,14 @@ export function ItemRow({
 
   const satisfied = checked && (!item.requires_photo || photos.length > 0);
 
+  // The checkbox updates optimistically before the server confirms it (so
+  // tapping feels instant); without a rollback a failed save (RLS reject,
+  // network blip) left the row showing checked forever with only a small
+  // warning text underneath — easy to miss, indistinguishable from a real
+  // save.
   function handleToggle() {
     if (readOnly || item.requires_photo) return;
+    const prevChecked = checked;
     const next = !checked;
     setChecked(next);
     setError(null);
@@ -48,7 +54,10 @@ export function ItemRow({
       fd.set("item_text", item.text);
       fd.set("checked", String(next));
       const res = await saveItemResult(fd);
-      if (res?.error) setError(res.error);
+      if (res?.error) {
+        setError(res.error);
+        setChecked(prevChecked);
+      }
     });
   }
 
@@ -82,12 +91,20 @@ export function ItemRow({
 
   function handleRemovePhoto(photoId: string) {
     setError(null);
+    const removed = photos.find((p) => p.id === photoId);
     const wasLastPhoto = photos.length <= 1;
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
     if (wasLastPhoto) setChecked(false);
     startTransition(async () => {
       const res = await deleteChecklistItemPhoto(photoId, submissionId, type);
-      if (res?.error) setError(res.error);
+      if (res?.error) {
+        // Roll back — otherwise a failed delete still visually removes the
+        // photo (and un-checks the item if it was the last one), which
+        // looks like the delete worked when the row is actually unchanged.
+        setError(res.error);
+        if (removed) setPhotos((prev) => [...prev, removed]);
+        if (wasLastPhoto) setChecked(true);
+      }
     });
   }
 

@@ -77,6 +77,39 @@ export const ROUND_CHECK_LABEL: Record<string, string> = {
   beleuchtung: "Beleuchtung",
 };
 
+/**
+ * Round-check-category items only render inside the Round Check block,
+ * which only exists on closing checklists (ChecklistSections gates it via
+ * includeRoundCheck). An item with one of these categories on any other
+ * checklist type is invisible everywhere — but if it's also requires_photo,
+ * the submit gate would demand it forever with no way to satisfy it. Use
+ * this everywhere "will this item ever be shown" matters, so the gate and
+ * the render can't drift apart again.
+ */
+export function isItemVisible(item: ChecklistTemplateItem, includeRoundCheck: boolean): boolean {
+  const isRoundCheck = (ROUND_CHECK_CATEGORIES as readonly string[]).includes(item.category);
+  return includeRoundCheck || !isRoundCheck;
+}
+
+const ALL_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: "allgemein", label: "Allgemein" },
+  { value: "verschluss", label: "Verschluss" },
+  { value: "sauberkeit", label: "Sauberkeit" },
+  { value: "geraete", label: "Geräte" },
+  { value: "beleuchtung", label: "Beleuchtung" },
+];
+
+/**
+ * Category choices to offer in the template editor. Round-check categories
+ * only render (see isItemVisible) on closing checklists — offering them on
+ * opening/weekly/monthly would create an item that can never be checked off
+ * and permanently blocks submission (it still counts toward the photo
+ * requirement even though there's nowhere on the page to satisfy it).
+ */
+export function categoryOptionsFor(type: ChecklistType) {
+  return type === "closing" ? ALL_CATEGORY_OPTIONS : ALL_CATEGORY_OPTIONS.filter((c) => c.value === "allgemein");
+}
+
 export function defaultTemplateItems(type: ChecklistType): ChecklistTemplateItem[] {
   if (type === "weekly") {
     return [

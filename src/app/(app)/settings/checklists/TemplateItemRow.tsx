@@ -6,35 +6,54 @@ import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
 import { X, Pencil, ChevronUp, ChevronDown } from "lucide-react";
-import type { ChecklistTemplateItem } from "@/lib/database.types";
-
-const CATEGORIES = [
-  { value: "allgemein", label: "Allgemein" },
-  { value: "verschluss", label: "Verschluss" },
-  { value: "sauberkeit", label: "Sauberkeit" },
-  { value: "geraete", label: "Geräte" },
-  { value: "beleuchtung", label: "Beleuchtung" },
-];
+import { categoryOptionsFor } from "@/app/(app)/checklists/shared/lib";
+import type { ChecklistTemplateItem, ChecklistType } from "@/lib/database.types";
 
 export function TemplateItemRow({
   templateId,
+  type,
   index,
   item,
   isFirst,
   isLast,
 }: {
   templateId: string;
+  type: ChecklistType;
   index: number;
   item: ChecklistTemplateItem;
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const categoryOptions = categoryOptionsFor(type);
+  // The item may already hold a category outside the current allow-list
+  // (leftover bad data, or a template that used to be closing) — keep it
+  // selectable so editing the item doesn't silently reassign its category.
+  const options = categoryOptions.some((c) => c.value === item.category)
+    ? categoryOptions
+    : [...categoryOptions, { value: item.category, label: item.category }];
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [rowError, setRowError] = useState<string | null>(null);
   const [state, formAction, savePending] = useActionState<ActionState, FormData>(
     updateTemplateItem,
     initialActionState,
   );
+
+  function move(direction: "up" | "down") {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await moveTemplateItem(templateId, index, direction);
+      if (res?.error) setRowError(res.error);
+    });
+  }
+
+  function remove() {
+    setRowError(null);
+    startTransition(async () => {
+      const res = await removeTemplateItem(templateId, index);
+      if (res?.error) setRowError(res.error);
+    });
+  }
 
   if (editing) {
     return (
@@ -50,7 +69,7 @@ export function TemplateItemRow({
             <div>
               <Label htmlFor={`edit-category-${templateId}-${index}`}>Kategorie</Label>
               <Select id={`edit-category-${templateId}-${index}`} name="category" defaultValue={item.category}>
-                {CATEGORIES.map((c) => (
+                {options.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
                   </option>
@@ -78,51 +97,54 @@ export function TemplateItemRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-2 py-2">
-      <div className="min-w-0">
-        <p className="text-sm text-parchment truncate">{item.text}</p>
-        <p className="text-xs text-parchment-dim">
-          {item.category}
-          {item.requires_photo ? " · fotopflichtig" : ""}
-        </p>
+    <li className="py-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm text-parchment truncate">{item.text}</p>
+          <p className="text-xs text-parchment-dim">
+            {item.category}
+            {item.requires_photo ? " · fotopflichtig" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => move("up")}
+            disabled={isFirst || pending}
+            aria-label="Nach oben verschieben"
+            className="text-parchment-dim hover:text-wine disabled:opacity-30"
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => move("down")}
+            disabled={isLast || pending}
+            aria-label="Nach unten verschieben"
+            className="text-parchment-dim hover:text-wine disabled:opacity-30"
+          >
+            <ChevronDown size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            aria-label="Punkt bearbeiten"
+            className="text-parchment-dim hover:text-wine ml-1"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={remove}
+            disabled={pending}
+            aria-label="Punkt entfernen"
+            className="text-parchment-dim hover:text-warn ml-1"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          type="button"
-          onClick={() => startTransition(() => moveTemplateItem(templateId, index, "up"))}
-          disabled={isFirst || pending}
-          aria-label="Nach oben verschieben"
-          className="text-parchment-dim hover:text-wine disabled:opacity-30"
-        >
-          <ChevronUp size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => startTransition(() => moveTemplateItem(templateId, index, "down"))}
-          disabled={isLast || pending}
-          aria-label="Nach unten verschieben"
-          className="text-parchment-dim hover:text-wine disabled:opacity-30"
-        >
-          <ChevronDown size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          aria-label="Punkt bearbeiten"
-          className="text-parchment-dim hover:text-wine ml-1"
-        >
-          <Pencil size={14} />
-        </button>
-        <button
-          type="button"
-          onClick={() => startTransition(() => removeTemplateItem(templateId, index))}
-          disabled={pending}
-          aria-label="Punkt entfernen"
-          className="text-parchment-dim hover:text-warn ml-1"
-        >
-          <X size={14} />
-        </button>
-      </div>
+      {rowError && <p className="text-xs text-warn mt-1">{rowError}</p>}
     </li>
   );
 }

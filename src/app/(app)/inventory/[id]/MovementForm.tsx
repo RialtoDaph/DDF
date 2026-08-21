@@ -6,11 +6,11 @@ import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { type ActionState, initialActionState } from "@/lib/actionState";
 
-const REASONS: { value: string; label: string; type: "in" | "out" }[] = [
-  { value: "restock", label: "Wareneingang", type: "in" },
-  { value: "usage", label: "Verbrauch", type: "out" },
-  { value: "waste", label: "Schwund/Verderb", type: "out" },
-  { value: "adjustment", label: "Korrektur", type: "out" },
+const REASONS: { value: string; label: string }[] = [
+  { value: "restock", label: "Wareneingang" },
+  { value: "usage", label: "Verbrauch" },
+  { value: "waste", label: "Schwund/Verderb" },
+  { value: "adjustment", label: "Korrektur" },
 ];
 
 export function MovementForm({
@@ -46,6 +46,15 @@ export function MovementForm({
           <p className="text-xs text-wine mt-1">Korrekturen erfordern Owner/Manager-Freigabe.</p>
         )}
       </div>
+      {reason === "adjustment" && (
+        <div>
+          <Label htmlFor="adjustment_direction">Richtung</Label>
+          <Select id="adjustment_direction" name="adjustment_direction" defaultValue="out">
+            <option value="out">Bestand verringern (z. B. Zählfehler, gefundener Schwund)</option>
+            <option value="in">Bestand erhöhen (z. B. nicht erfasste Lieferung)</option>
+          </Select>
+        </div>
+      )}
       <div>
         <Label htmlFor="quantity">Menge ({unit})</Label>
         <Input id="quantity" name="quantity" type="number" step="0.01" min="0.01" required />

@@ -9,12 +9,12 @@ import {
   isChecklistType,
   periodStartFor,
   periodLabel,
+  isItemVisible,
   CHECKLIST_TYPES,
   CHECKLIST_LABEL,
 } from "../shared/lib";
 import { ChecklistSections, type ItemResultMap } from "../shared/ChecklistSections";
 import { SubmitBar } from "../shared/SubmitBar";
-import { ApproveButton } from "../shared/ApproveButton";
 import { CreateTemplateButton } from "../shared/CreateTemplateButton";
 import { PendingApprovals } from "../shared/PendingApprovals";
 import { ClosingMetaForm, HandoverNoteForm } from "../shared/ClosingExtras";
@@ -113,22 +113,27 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
   }
 
   const items = template.items as ChecklistTemplateItem[];
+  const isClosing = type === "closing";
+  // Only items that are actually rendered somewhere (per isItemVisible, same
+  // rule ChecklistSections uses) can gate submission — otherwise a
+  // round-check-category item mistakenly added to a non-closing template
+  // (invisible on that type) would demand a photo forever with no way to
+  // provide one.
   const allSatisfied = items
-    .filter((i) => i.requires_photo)
+    .filter((i) => i.requires_photo && isItemVisible(i, isClosing))
     .every((i) => resultMap[i.text]?.checked && (resultMap[i.text]?.photos.length ?? 0) > 0);
 
   const readOnly = submission.status !== "draft";
-  const isClosing = type === "closing";
 
+  // `submission` above is always the viewer's own (getOrCreateSubmission is
+  // keyed to profile.id), so an approve action here would always be a
+  // self-approval — that's handled instead via PendingApprovals below, which
+  // only lists other people's submissions. Owner/manager approving their own
+  // work would defeat the point of a two-person approval step.
   const statusBadge = (
     <div className="flex items-center gap-2 shrink-0">
       {submission.status === "approved" && <StampBadge>Freigegeben</StampBadge>}
-      {submission.status === "submitted" && (
-        <>
-          <StampBadge>Eingereicht</StampBadge>
-          {canApprove(profile.role) && <ApproveButton submissionId={submission.id} type={type} />}
-        </>
-      )}
+      {submission.status === "submitted" && <StampBadge>Eingereicht</StampBadge>}
     </div>
   );
 
@@ -168,7 +173,9 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
         allSatisfied={allSatisfied}
       />
 
-      {canApprove(profile.role) && <PendingApprovals templateId={template.id} type={type} />}
+      {canApprove(profile.role) && (
+        <PendingApprovals templateId={template.id} type={type} currentUserId={profile.id} />
+      )}
     </div>
   );
 }

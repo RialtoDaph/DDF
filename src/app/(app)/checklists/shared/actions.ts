@@ -269,6 +269,15 @@ export async function approveChecklist(submissionId: string, type: ChecklistType
   if (!canApprove(profile.role)) return { error: "Keine Berechtigung." };
   const supabase = await createClient();
 
+  const { data: submission } = await supabase
+    .from("checklist_submissions")
+    .select("user_id")
+    .eq("id", submissionId)
+    .single();
+  if (submission?.user_id === profile.id) {
+    return { error: "Du kannst deine eigene Checkliste nicht selbst freigeben." };
+  }
+
   const { data: updated, error } = await supabase
     .from("checklist_submissions")
     .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: profile.id })

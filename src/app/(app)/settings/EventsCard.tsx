@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { createEvent, deleteEvent } from "./actions";
 import { Input, Label } from "@/components/ui/Field";
@@ -11,11 +11,20 @@ import { type ActionState, initialActionState } from "@/lib/actionState";
 export function EventsCard({ events }: { events: { id: string; label: string; event_date: string }[] }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [removePending, startRemove] = useTransition();
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [state, formAction, pending] = useActionState<ActionState, FormData>(async (prev, fd) => {
     const result = await createEvent(prev, fd);
     if (result?.success) formRef.current?.reset();
     return result;
   }, initialActionState);
+
+  function handleRemove(id: string) {
+    setRemoveError(null);
+    startRemove(async () => {
+      const res = await deleteEvent(id);
+      if (res?.error) setRemoveError(res.error);
+    });
+  }
 
   return (
     <Card>
@@ -31,7 +40,7 @@ export function EventsCard({ events }: { events: { id: string; label: string; ev
               <button
                 type="button"
                 disabled={removePending}
-                onClick={() => startRemove(() => deleteEvent(ev.id))}
+                onClick={() => handleRemove(ev.id)}
                 aria-label="Termin entfernen"
                 className="text-parchment-dim hover:text-warn shrink-0"
               >
@@ -41,6 +50,7 @@ export function EventsCard({ events }: { events: { id: string; label: string; ev
           ))}
         </ul>
       )}
+      {removeError && <p className="text-xs text-warn mb-3">{removeError}</p>}
 
       <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-3 pt-2 border-t border-ink-border">
         <div className="flex-1 min-w-40">
