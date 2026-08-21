@@ -14,29 +14,44 @@ export function isChecklistType(value: string): value is ChecklistType {
   return (CHECKLIST_TYPES as readonly string[]).includes(value);
 }
 
+// A closing shift routinely runs past midnight (last orders, cleanup, cash
+// count) — a closing checklist filled out at 00:30 still belongs to the
+// night that just ended, not the new calendar day. Without this, that
+// submission gets dated to the new day and then sits there — already
+// "submitted" — occupying that day's slot, so the next evening's real
+// closing checklist reopens the same finished one instead of a fresh draft.
+const CLOSING_CUTOVER_HOUR = 6;
+
 /**
- * The period a submission belongs to: the day itself for opening/closing, the
+ * The period a submission belongs to: the day itself for opening/closing
+ * (closing shifted back a day before CLOSING_CUTOVER_HOUR — see above), the
  * Monday for a weekly check, the 1st for a monthly one. A Wochencheck started
  * on Tuesday and finished on Thursday has to resolve to the same form, which
  * is why submissions are keyed by this rather than by the calendar date.
  */
 export function periodStartFor(type: ChecklistType, now = new Date()): string {
-  // Read the calendar date in the outlet's own timezone rather than the
-  // server's — mixing server-local Y/M/D with a UTC-labeled date flips the
-  // day (and the weekly Monday / monthly 1st boundary) around midnight
-  // Europe/Berlin on a UTC-hosted server, worse near DST changes.
+  // Read the calendar date (and hour, for the closing cutover) in the
+  // outlet's own timezone rather than the server's — mixing server-local
+  // Y/M/D with a UTC-labeled date flips the day (and the weekly Monday /
+  // monthly 1st boundary) around midnight Europe/Berlin on a UTC-hosted
+  // server, worse near DST changes.
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Berlin",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
   }).formatToParts(now);
   const year = Number(parts.find((p) => p.type === "year")?.value);
   const month = Number(parts.find((p) => p.type === "month")?.value);
   const day = Number(parts.find((p) => p.type === "day")?.value);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value);
   const d = new Date(Date.UTC(year, month - 1, day));
 
-  if (type === "weekly") {
+  if (type === "closing" && hour < CLOSING_CUTOVER_HOUR) {
+    d.setUTCDate(d.getUTCDate() - 1);
+  } else if (type === "weekly") {
     const mondayOffset = (d.getUTCDay() + 6) % 7;
     d.setUTCDate(d.getUTCDate() - mondayOffset);
   } else if (type === "monthly") {
