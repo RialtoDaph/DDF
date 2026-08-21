@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ListChecks,
   Truck,
+  ShoppingCart,
   BookOpenText,
   BookMarked,
   BarChart3,
@@ -42,6 +43,7 @@ const NAV_GROUPS_ALL: { label: string | null; items: NavItem[] }[] = [
     label: "Bestand",
     items: [
       { href: "/inventory", label: "Inventar", icon: Package, roles: ["owner", "manager", "staff"] },
+      { href: "/orders", label: "Bestellungen", icon: ShoppingCart, roles: ["owner", "manager", "staff"] },
       { href: "/suppliers", label: "Lieferanten", icon: Truck, roles: ["owner", "manager"] },
       { href: "/menu", label: "Menue & Rezepte", icon: BookOpenText, roles: ["owner", "manager"] },
     ],

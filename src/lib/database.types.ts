@@ -24,6 +24,7 @@ export type ChecklistType = "opening" | "closing" | "weekly" | "monthly";
 export type SubmissionStatus = "draft" | "submitted" | "approved";
 export type QuizQuestionType = "multiple_choice" | "short_answer";
 export type TrainingStatus = "not_started" | "in_progress" | "passed";
+export type OrderItemStatus = "open" | "ordered";
 
 export interface ChecklistTemplateItem {
   text: string;
@@ -372,6 +373,35 @@ export interface Database {
         { id: string; outlet_id: string; label: string; event_date: string; created_by: string | null; created_at: string },
         { id?: string; outlet_id: string; label: string; event_date: string; created_by?: string | null }
       >;
+      order_list_items: Table<
+        {
+          id: string;
+          outlet_id: string;
+          item_name: string;
+          quantity: string | null;
+          supplier_id: string | null;
+          supplier_name: string | null;
+          notes: string | null;
+          status: OrderItemStatus;
+          created_by: string | null;
+          created_at: string;
+          ordered_at: string | null;
+          ordered_by: string | null;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          item_name: string;
+          quantity?: string | null;
+          supplier_id?: string | null;
+          supplier_name?: string | null;
+          notes?: string | null;
+          status?: OrderItemStatus;
+          created_by?: string | null;
+          ordered_at?: string | null;
+          ordered_by?: string | null;
+        }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -397,6 +427,7 @@ export interface Database {
       submission_status: SubmissionStatus;
       quiz_question_type: QuizQuestionType;
       training_status: TrainingStatus;
+      order_item_status: OrderItemStatus;
     };
     CompositeTypes: Record<string, never>;
   };
