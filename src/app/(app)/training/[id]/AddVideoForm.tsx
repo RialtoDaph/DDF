@@ -1,88 +1,58 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { attachModuleVideo } from "../actions";
-import { createClient } from "@/lib/supabase/client";
-import { uploadTrainingVideo, uploadProgressLabel, cancelTrainingVideoUpload } from "../shared/videoUpload";
+import { isValidVideoLink } from "../shared/driveVideo";
+import { Input, Label } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 
 export function AddVideoForm({ moduleId }: { moduleId: string }) {
+  const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [busyLabel, setBusyLabel] = useState("Wird hochgeladen…");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const controllerRef = useRef<AbortController | null>(null);
-  const [supabase] = useState(() => createClient());
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    const video = fileRef.current?.files?.[0];
-    if (!video) {
-      setError("Bitte ein Video auswählen.");
+    const trimmed = url.trim();
+    if (!isValidVideoLink(trimmed)) {
+      setError("Bitte einen gültigen Video-Link angeben.");
       return;
     }
 
     setBusy(true);
-    setBusyLabel("Wird hochgeladen…");
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    const uploadResult = await uploadTrainingVideo(
-      supabase,
-      moduleId,
-      video,
-      (phase, ratio) => setBusyLabel(uploadProgressLabel(phase, ratio, "Wird hochgeladen…")),
-      controller.signal,
-    );
-    controllerRef.current = null;
-    if (uploadResult.error || !uploadResult.path) {
-      setError(uploadResult.error ?? "Unbekannter Fehler beim Hochladen.");
-      setBusy(false);
-      return;
-    }
-
-    const attachResult = await attachModuleVideo(moduleId, uploadResult.path);
-    if (attachResult.error) {
-      setError(attachResult.error);
-      setBusy(false);
-      return;
-    }
-
-    router.refresh();
-  }
-
-  function handleCancel() {
-    controllerRef.current?.abort();
-    controllerRef.current = null;
-    cancelTrainingVideoUpload();
+    const result = await attachModuleVideo(moduleId, trimmed);
     setBusy(false);
-    setError("Hochladen abgebrochen.");
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <input
-        ref={fileRef}
-        type="file"
-        accept="video/*"
-        className="block w-full text-sm text-parchment-dim file:mr-3 file:rounded-md file:border-0 file:bg-wine file:px-3 file:py-2 file:text-ink file:text-sm"
-      />
-      <p className="text-xs text-parchment-dim">Videos über 50 MB werden vor dem Hochladen automatisch komprimiert.</p>
-      {error && <p className="text-sm text-warn">{error}</p>}
-      <div className="flex items-center gap-2">
-        <Button type="submit" variant="secondary" disabled={busy}>
-          {busy ? busyLabel : "Video hochladen"}
-        </Button>
-        {busy && (
-          <Button type="button" variant="ghost" onClick={handleCancel}>
-            Abbrechen
-          </Button>
-        )}
+      <div>
+        <Label htmlFor={`video-url-${moduleId}`}>Video-Link (Google Drive)</Label>
+        <Input
+          id={`video-url-${moduleId}`}
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://drive.google.com/file/d/…/view"
+          required
+        />
+        <p className="text-xs text-parchment-dim mt-1">
+          Video in Google Drive hochladen, Freigabe auf &quot;Jeder mit dem Link&quot; stellen, Link hier einfügen.
+        </p>
       </div>
+      {error && <p className="text-sm text-warn">{error}</p>}
+      <Button type="submit" variant="secondary" disabled={busy}>
+        {busy ? "Wird gespeichert…" : "Video verknüpfen"}
+      </Button>
     </form>
   );
 }

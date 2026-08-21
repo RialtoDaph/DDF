@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
+import { isValidVideoLink } from "./shared/driveVideo";
 import type { QuizQuestionType } from "@/lib/database.types";
 
 // Inserts the module row only — the video (if any) is uploaded directly from
@@ -65,12 +66,13 @@ export async function updateModuleRecord(_prevState: unknown, formData: FormData
   return { success: true };
 }
 
-export async function attachModuleVideo(moduleId: string, path: string): Promise<{ error?: string }> {
+export async function attachModuleVideo(moduleId: string, url: string): Promise<{ error?: string }> {
   const profile = await requireProfile();
   if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+  if (!isValidVideoLink(url)) return { error: "Bitte einen gültigen Video-Link angeben." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("training_modules").update({ video_url: path }).eq("id", moduleId);
+  const { error } = await supabase.from("training_modules").update({ video_url: url }).eq("id", moduleId);
   if (error) return { error: error.message };
 
   revalidatePath(`/training/${moduleId}`);

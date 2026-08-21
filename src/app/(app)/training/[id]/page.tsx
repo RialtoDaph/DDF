@@ -9,6 +9,7 @@ import { QuizBuilder } from "./QuizBuilder";
 import { AddVideoForm } from "./AddVideoForm";
 import { EditModuleForm } from "./EditModuleForm";
 import { recipeDisplayUnit } from "@/lib/recipeCost";
+import { driveEmbedUrl } from "../shared/driveVideo";
 
 interface PlayerQuestion {
   id: string;
@@ -48,10 +49,19 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
     });
   }
 
+  // video_url is either a pasted external link (Google Drive, current flow)
+  // or — for modules created before that switch — a path inside the
+  // training-videos Storage bucket that still needs signing.
   let videoUrl: string | null = null;
+  let videoEmbedUrl: string | null = null;
   if (moduleData.video_url) {
-    const { data } = await supabase.storage.from("training-videos").createSignedUrl(moduleData.video_url, 3600);
-    videoUrl = data?.signedUrl ?? null;
+    if (/^https?:\/\//.test(moduleData.video_url)) {
+      videoUrl = moduleData.video_url;
+      videoEmbedUrl = driveEmbedUrl(moduleData.video_url);
+    } else {
+      const { data } = await supabase.storage.from("training-videos").createSignedUrl(moduleData.video_url, 3600);
+      videoUrl = data?.signedUrl ?? null;
+    }
   }
 
   let fullQuestions: { id: string; question: string; type: "multiple_choice" | "short_answer"; options: string[] | null; correct_answer: string }[] = [];
@@ -92,7 +102,16 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
         <div className="space-y-4">
           {videoUrl && (
             <Card>
-              <video src={videoUrl} controls className="mx-auto block max-h-[60vh] w-auto max-w-full rounded-md" />
+              {videoEmbedUrl ? (
+                <iframe
+                  src={videoEmbedUrl}
+                  allow="autoplay"
+                  allowFullScreen
+                  className="w-full aspect-video rounded-md border-0"
+                />
+              ) : (
+                <video src={videoUrl} controls className="mx-auto block max-h-[60vh] w-auto max-w-full rounded-md" />
+              )}
             </Card>
           )}
 
