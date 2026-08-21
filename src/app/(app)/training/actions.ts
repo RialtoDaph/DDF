@@ -79,6 +79,18 @@ export async function attachModuleVideo(moduleId: string, url: string): Promise<
   return {};
 }
 
+export async function removeModuleVideo(moduleId: string): Promise<{ error?: string }> {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("training_modules").update({ video_url: null }).eq("id", moduleId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/training/${moduleId}`);
+  return {};
+}
+
 export async function addQuizQuestion(_prevState: unknown, formData: FormData) {
   const profile = await requireProfile();
   if (!canManageMasterData(profile.role)) {
