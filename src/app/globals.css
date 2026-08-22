@@ -20,6 +20,11 @@
   /* Amber, not another red — warnings have to stay distinct from the brand. */
   --color-warn: #d98e3d;
   --color-warn-soft: #38271a;
+  /* Wine sub-type colour coding (Weinschrank) — red wine reuses the brand's
+     own wine/wine-deep/wine-soft, these three cover the rest. */
+  --color-wine-white: #c7b46a;
+  --color-wine-rose: #d99aa8;
+  --color-wine-sekt: #e4d6a0;
 
   --font-serif: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -55,6 +60,9 @@
   --color-done-soft: var(--color-done-soft);
   --color-warn: var(--color-warn);
   --color-warn-soft: var(--color-warn-soft);
+  --color-wine-white: var(--color-wine-white);
+  --color-wine-rose: var(--color-wine-rose);
+  --color-wine-sekt: var(--color-wine-sekt);
 
   --font-serif: var(--font-serif);
   --font-sans: var(--font-sans);

@@ -11,6 +11,7 @@ const initialState = { error: "" };
 export function NewItemForm({ suppliers }: { suppliers: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(createItem, initialState);
   const [unit, setUnit] = useState("");
+  const [category, setCategory] = useState("spirits");
 
   return (
     <form action={formAction} className="space-y-4">
@@ -21,7 +22,13 @@ export function NewItemForm({ suppliers }: { suppliers: { id: string; name: stri
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="category">Kategorie</Label>
-          <Select id="category" name="category" required defaultValue="spirits">
+          <Select
+            id="category"
+            name="category"
+            required
+            defaultValue="spirits"
+            onChange={(e) => setCategory(e.target.value)}
+          >
             <option value="spirits">Spirituosen</option>
             <option value="beer">Bier</option>
             <option value="wine">Wein</option>
@@ -54,6 +61,19 @@ export function NewItemForm({ suppliers }: { suppliers: { id: string; name: stri
           </datalist>
         </div>
       </div>
+      {category === "wine" && (
+        <div>
+          <Label htmlFor="wine_type">Weinart</Label>
+          <Select id="wine_type" name="wine_type" defaultValue="">
+            <option value="">— nicht gesetzt —</option>
+            <option value="rot">Rotwein</option>
+            <option value="weiss">Weißwein</option>
+            <option value="rose">Rosé</option>
+            <option value="sekt">Sekt</option>
+          </Select>
+          <p className="text-xs text-parchment-dim mt-1">Wird für die Farbcodierung in der Weinschrank-Karte genutzt.</p>
+        </div>
+      )}
       {!isMeasurementUnit(unit) && (
         <div>
           <Label htmlFor="unit_volume_ml">

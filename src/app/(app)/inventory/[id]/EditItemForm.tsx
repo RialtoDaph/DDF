@@ -4,7 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import { updateItem, deleteItem } from "../actions";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import type { ItemCategory } from "@/lib/database.types";
+import type { ItemCategory, WineType } from "@/lib/database.types";
 import { type ActionState, initialActionState } from "@/lib/actionState";
 import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../units";
 
@@ -22,6 +22,7 @@ export function EditItemForm({
     purchase_price: number | null;
     is_perishable: boolean;
     default_supplier_id: string | null;
+    wine_type: WineType | null;
   };
   suppliers: { id: string; name: string }[];
 }) {
@@ -29,6 +30,7 @@ export function EditItemForm({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePending, startDelete] = useTransition();
   const [unit, setUnit] = useState(item.unit);
+  const [category, setCategory] = useState<ItemCategory>(item.category);
 
   function handleDelete() {
     if (
@@ -55,7 +57,12 @@ export function EditItemForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="edit-category">Kategorie</Label>
-          <Select id="edit-category" name="category" defaultValue={item.category}>
+          <Select
+            id="edit-category"
+            name="category"
+            defaultValue={item.category}
+            onChange={(e) => setCategory(e.target.value as ItemCategory)}
+          >
             <option value="spirits">Spirituosen</option>
             <option value="beer">Bier</option>
             <option value="wine">Wein</option>
@@ -87,6 +94,19 @@ export function EditItemForm({
           </datalist>
         </div>
       </div>
+      {category === "wine" && (
+        <div>
+          <Label htmlFor="edit-wine-type">Weinart</Label>
+          <Select id="edit-wine-type" name="wine_type" defaultValue={item.wine_type ?? ""}>
+            <option value="">— nicht gesetzt —</option>
+            <option value="rot">Rotwein</option>
+            <option value="weiss">Weißwein</option>
+            <option value="rose">Rosé</option>
+            <option value="sekt">Sekt</option>
+          </Select>
+          <p className="text-xs text-parchment-dim mt-1">Wird für die Farbcodierung in der Weinschrank-Karte genutzt.</p>
+        </div>
+      )}
       {!isMeasurementUnit(unit) && (
         <div>
           <Label htmlFor="edit-unit-volume">

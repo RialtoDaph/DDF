@@ -25,6 +25,7 @@ export type SubmissionStatus = "draft" | "submitted" | "approved";
 export type QuizQuestionType = "multiple_choice" | "short_answer";
 export type TrainingStatus = "not_started" | "in_progress" | "passed";
 export type OrderItemStatus = "open" | "ordered";
+export type WineType = "rot" | "weiss" | "rose" | "sekt";
 
 export interface ChecklistTemplateItem {
   text: string;
@@ -100,6 +101,7 @@ export interface Database {
           outlet_id: string;
           is_perishable: boolean;
           default_supplier_id: string | null;
+          wine_type: WineType | null;
           created_at: string;
         },
         {
@@ -114,6 +116,7 @@ export interface Database {
           outlet_id: string;
           is_perishable?: boolean;
           default_supplier_id?: string | null;
+          wine_type?: WineType | null;
         }
       >;
       stock_movements: Table<
@@ -402,6 +405,43 @@ export interface Database {
           ordered_by?: string | null;
         }
       >;
+      wine_cabinets: Table<
+        {
+          id: string;
+          outlet_id: string;
+          name: string;
+          temperature_c: number | null;
+          sort_order: number;
+          created_at: string;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          name: string;
+          temperature_c?: number | null;
+          sort_order?: number;
+        }
+      >;
+      wine_slots: Table<
+        {
+          id: string;
+          cabinet_id: string;
+          rack_number: number;
+          slot_number: number;
+          inventory_item_id: string | null;
+          flipped: boolean;
+          updated_at: string;
+        },
+        {
+          id?: string;
+          cabinet_id: string;
+          rack_number: number;
+          slot_number: number;
+          inventory_item_id?: string | null;
+          flipped?: boolean;
+        },
+        { inventory_item_id?: string | null; flipped?: boolean; updated_at?: string }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -428,6 +468,7 @@ export interface Database {
       quiz_question_type: QuizQuestionType;
       training_status: TrainingStatus;
       order_item_status: OrderItemStatus;
+      wine_type: WineType;
     };
     CompositeTypes: Record<string, never>;
   };
