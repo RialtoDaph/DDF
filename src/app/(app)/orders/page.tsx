@@ -1,8 +1,8 @@
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { NewOrderItemForm } from "./NewOrderItemForm";
-import { OrderItemRow } from "./OrderItemRow";
+import { OrderList } from "./OrderList";
 
 export default async function OrdersPage() {
   const profile = await requireProfile();
@@ -21,8 +21,6 @@ export default async function OrdersPage() {
     supabase.from("suppliers").select("name").order("name"),
   ]);
 
-  const open = (items ?? []).filter((i) => i.status !== "ordered");
-  const ordered = (items ?? []).filter((i) => i.status === "ordered");
   const supplierNames = (suppliers ?? []).map((s) => s.name);
 
   return (
@@ -38,29 +36,7 @@ export default async function OrdersPage() {
         <NewOrderItemForm supplierNames={supplierNames} />
       </Card>
 
-      <Card>
-        <CardHeader title="Offen" />
-        {open.length === 0 ? (
-          <p className="text-sm text-parchment-dim">Nichts offen.</p>
-        ) : (
-          <ul className="divide-y divide-ink-border">
-            {open.map((item) => (
-              <OrderItemRow key={item.id} item={item} />
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {ordered.length > 0 && (
-        <Card>
-          <CardHeader title="Bestellt" />
-          <ul className="divide-y divide-ink-border">
-            {ordered.slice(0, 20).map((item) => (
-              <OrderItemRow key={item.id} item={item} />
-            ))}
-          </ul>
-        </Card>
-      )}
+      <OrderList items={items ?? []} />
     </div>
   );
 }
