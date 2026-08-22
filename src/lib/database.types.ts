@@ -102,6 +102,7 @@ export interface Database {
           is_perishable: boolean;
           default_supplier_id: string | null;
           wine_type: WineType | null;
+          label_photo_url: string | null;
           created_at: string;
         },
         {
@@ -117,6 +118,7 @@ export interface Database {
           is_perishable?: boolean;
           default_supplier_id?: string | null;
           wine_type?: WineType | null;
+          label_photo_url?: string | null;
         }
       >;
       stock_movements: Table<

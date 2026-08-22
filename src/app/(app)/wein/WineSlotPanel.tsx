@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { assignBottle, removeBottle } from "./actions";
+import { assignBottle, removeBottle, attachLabelPhoto, removeLabelPhoto } from "./actions";
 import { WINE_TYPE_LABEL, type SlotData, type WineItem } from "./lib";
 import { Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { CameraCapture, type CapturedPhoto } from "@/components/camera/CameraCapture";
 import { cn } from "@/lib/utils";
 
 export interface ActiveSlot {
@@ -17,15 +18,18 @@ export interface ActiveSlot {
 export function WineSlotPanel({
   active,
   wineItems,
+  canManage,
   onClose,
   onMutated,
 }: {
   active: ActiveSlot | null;
   wineItems: WineItem[];
+  canManage: boolean;
   onClose: () => void;
   onMutated: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  const [photoPending, startPhotoTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pickedItemId, setPickedItemId] = useState("");
   // Local override so the panel reflects an assign/remove immediately,
@@ -33,6 +37,7 @@ export function WineSlotPanel({
   // rest of the page.
   const [displayItem, setDisplayItem] = useState<SlotData["item"]>(null);
   const [prevSlotId, setPrevSlotId] = useState<string | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
   // Reset the panel's local state whenever it switches to a different slot
   // (or closes) — a render-time adjustment rather than an effect, so the
@@ -43,6 +48,7 @@ export function WineSlotPanel({
     setError(null);
     setDisplayItem(active?.slot.item ?? null);
     setPickedItemId("");
+    setCaptureOpen(false);
   }
 
   const open = !!active;
@@ -81,6 +87,46 @@ export function WineSlotPanel({
         return;
       }
       setDisplayItem(null);
+      onMutated();
+    });
+  }
+
+  // The photo shows immediately via the capture's local blob preview; a
+  // failed upload rolls the previous labelPhotoUrl back in.
+  function handleCapturePhoto(p: CapturedPhoto) {
+    if (!displayItem) return;
+    const item = displayItem;
+    const previousUrl = item.labelPhotoUrl;
+    setCaptureOpen(false);
+    setError(null);
+    setDisplayItem({ ...item, labelPhotoUrl: p.previewUrl });
+    startPhotoTransition(async () => {
+      const fd = new FormData();
+      fd.set("item_id", item.id);
+      fd.set("photo", p.file);
+      const res = await attachLabelPhoto(fd);
+      if (res?.error) {
+        setError(res.error);
+        setDisplayItem((cur) => (cur ? { ...cur, labelPhotoUrl: previousUrl } : cur));
+        return;
+      }
+      onMutated();
+    });
+  }
+
+  function handleRemovePhoto() {
+    if (!displayItem) return;
+    const item = displayItem;
+    const previousUrl = item.labelPhotoUrl;
+    setError(null);
+    setDisplayItem({ ...item, labelPhotoUrl: null });
+    startPhotoTransition(async () => {
+      const res = await removeLabelPhoto(item.id);
+      if (res?.error) {
+        setError(res.error);
+        setDisplayItem((cur) => (cur ? { ...cur, labelPhotoUrl: previousUrl } : cur));
+        return;
+      }
       onMutated();
     });
   }
@@ -174,20 +220,63 @@ export function WineSlotPanel({
                     {displayItem.currentStock} {displayItem.unit} im Bestand gesamt
                   </p>
 
-                  <div className="mx-auto mb-3 flex aspect-[3/4] w-[132px] items-center justify-center rounded-lg border-[1.5px] border-dashed border-ink-border bg-ink-raised p-3 text-center">
-                    <span className="text-[0.7rem] leading-snug text-parchment-dim">
-                      Kein Etikett-Foto
-                      <br />
-                      hinterlegt
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled
-                    className="mb-5 w-full cursor-not-allowed rounded-md border border-dashed border-ink-border py-2.5 text-[0.85rem] font-semibold text-parchment-dim"
-                  >
-                    Etikett-Foto hinzufügen — bald verfügbar
-                  </button>
+                  {displayItem.labelPhotoUrl ? (
+                    <div className="mx-auto mb-3 aspect-[3/4] w-[132px] overflow-hidden rounded-lg border-[1.5px] border-ink-border bg-ink-raised">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={displayItem.labelPhotoUrl}
+                        alt={`Etikett ${displayItem.name}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mx-auto mb-3 flex aspect-[3/4] w-[132px] items-center justify-center rounded-lg border-[1.5px] border-dashed border-ink-border bg-ink-raised p-3 text-center">
+                      <span className="text-[0.7rem] leading-snug text-parchment-dim">
+                        Kein Etikett-Foto
+                        <br />
+                        hinterlegt
+                      </span>
+                    </div>
+                  )}
+
+                  {canManage && (
+                    <div className="mb-5">
+                      {captureOpen ? (
+                        <div className="space-y-2">
+                          <CameraCapture onCapture={handleCapturePhoto} value={null} label="Etikett fotografieren" />
+                          <button
+                            type="button"
+                            onClick={() => setCaptureOpen(false)}
+                            className="w-full text-center text-xs text-parchment-dim hover:text-parchment"
+                          >
+                            Abbrechen
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="flex-1"
+                            disabled={photoPending}
+                            onClick={() => setCaptureOpen(true)}
+                          >
+                            {displayItem.labelPhotoUrl ? "Foto ersetzen" : "+ Etikett-Foto"}
+                          </Button>
+                          {displayItem.labelPhotoUrl && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={photoPending}
+                              onClick={handleRemovePhoto}
+                            >
+                              Entfernen
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <Button type="button" variant="ghost" className="w-full" disabled={pending} onClick={handleRemove}>
                     {pending ? "…" : "↑ Ausgang — Flasche entnehmen"}

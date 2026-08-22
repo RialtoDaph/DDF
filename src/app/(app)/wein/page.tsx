@@ -19,17 +19,32 @@ export default async function WeinPage() {
     supabase
       .from("wine_cabinets")
       .select(
-        "id, name, temperature_c, sort_order, wine_slots(id, rack_number, slot_number, flipped, inventory_items(id, name, wine_type, current_stock, unit))",
+        "id, name, temperature_c, sort_order, wine_slots(id, rack_number, slot_number, flipped, inventory_items(id))",
       )
       .eq("outlet_id", profile.outlet_id)
       .order("sort_order", { ascending: true }),
     supabase
       .from("inventory_items")
-      .select("id, name, wine_type, current_stock, unit")
+      .select("id, name, wine_type, current_stock, unit, label_photo_url")
       .eq("outlet_id", profile.outlet_id)
       .eq("category", "wine")
       .order("name"),
   ]);
+
+  const wineItems: WineItem[] = await Promise.all(
+    (wineItemsRaw ?? []).map(async (w) => ({
+      id: w.id,
+      name: w.name,
+      wineType: w.wine_type,
+      currentStock: w.current_stock,
+      unit: w.unit,
+      labelPhotoUrl: w.label_photo_url
+        ? ((await supabase.storage.from("wine-labels").createSignedUrl(w.label_photo_url, 3600)).data?.signedUrl ??
+          null)
+        : null,
+    })),
+  );
+  const wineItemsById = new Map(wineItems.map((w) => [w.id, w]));
 
   const cabinets: CabinetData[] = (cabinetsRaw ?? []).map((c) => ({
     id: c.id,
@@ -41,31 +56,15 @@ export default async function WeinPage() {
         rack_number: number;
         slot_number: number;
         flipped: boolean;
-        inventory_items: { id: string; name: string; wine_type: WineItem["wineType"]; current_stock: number; unit: string } | null;
+        inventory_items: { id: string } | null;
       }[]) ?? []
     ).map((s) => ({
       id: s.id,
       rackNumber: s.rack_number,
       slotNumber: s.slot_number,
       flipped: s.flipped,
-      item: s.inventory_items
-        ? {
-            id: s.inventory_items.id,
-            name: s.inventory_items.name,
-            wineType: s.inventory_items.wine_type,
-            currentStock: s.inventory_items.current_stock,
-            unit: s.inventory_items.unit,
-          }
-        : null,
+      item: s.inventory_items ? (wineItemsById.get(s.inventory_items.id) ?? null) : null,
     })),
-  }));
-
-  const wineItems: WineItem[] = (wineItemsRaw ?? []).map((w) => ({
-    id: w.id,
-    name: w.name,
-    wineType: w.wine_type,
-    currentStock: w.current_stock,
-    unit: w.unit,
   }));
 
   return (

@@ -16,6 +16,8 @@ export interface WineItem {
   wineType: WineType | null;
   currentStock: number;
   unit: string;
+  /** Signed URL, already ready to render — null if no label photo is on file. */
+  labelPhotoUrl: string | null;
 }
 
 export interface SlotData {

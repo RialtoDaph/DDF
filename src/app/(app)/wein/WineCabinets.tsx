@@ -144,7 +144,13 @@ export function WineCabinets({
         </Card>
       ))}
 
-      <WineSlotPanel active={active} wineItems={wineItems} onClose={() => setActive(null)} onMutated={handleMutated} />
+      <WineSlotPanel
+        active={active}
+        wineItems={wineItems}
+        canManage={canManage}
+        onClose={() => setActive(null)}
+        onMutated={handleMutated}
+      />
     </div>
   );
 }

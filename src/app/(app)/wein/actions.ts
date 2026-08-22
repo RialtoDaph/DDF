@@ -153,3 +153,58 @@ export async function toggleSlotFlip(slotId: string): Promise<{ error?: string }
   revalidatePath("/wein");
   return {};
 }
+
+/** The label is a property of the wine (inventory_items), not the slot — a bottle moving racks keeps its photo. */
+export async function attachLabelPhoto(formData: FormData): Promise<{ error?: string; path?: string }> {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+
+  const itemId = String(formData.get("item_id") ?? "");
+  const photo = formData.get("photo") as File | null;
+  if (!photo || photo.size === 0) return { error: "Kein Foto übermittelt." };
+
+  const supabase = await createClient();
+  const { data: item } = await supabase
+    .from("inventory_items")
+    .select("id, outlet_id, label_photo_url")
+    .eq("id", itemId)
+    .single();
+  if (!item) return { error: "Artikel nicht gefunden." };
+
+  const path = `${item.outlet_id}/${itemId}/${Date.now()}.jpg`;
+  const { error: uploadError } = await supabase.storage
+    .from("wine-labels")
+    .upload(path, photo, { contentType: "image/jpeg" });
+  if (uploadError) return { error: uploadError.message };
+
+  const { error: updateError } = await supabase.from("inventory_items").update({ label_photo_url: path }).eq("id", itemId);
+  if (updateError) return { error: updateError.message };
+
+  // Best-effort — an old photo left behind is just a few KB of orphaned
+  // storage, not worth failing the (already-saved) new photo over.
+  if (item.label_photo_url) {
+    await supabase.storage.from("wine-labels").remove([item.label_photo_url]);
+  }
+
+  revalidatePath("/wein");
+  revalidatePath("/inventory");
+  return { path };
+}
+
+export async function removeLabelPhoto(itemId: string): Promise<{ error?: string }> {
+  const profile = await requireProfile();
+  if (!canManageMasterData(profile.role)) return { error: "Keine Berechtigung." };
+
+  const supabase = await createClient();
+  const { data: item } = await supabase.from("inventory_items").select("label_photo_url").eq("id", itemId).single();
+  if (!item?.label_photo_url) return { error: "Kein Foto vorhanden." };
+
+  const { error } = await supabase.from("inventory_items").update({ label_photo_url: null }).eq("id", itemId);
+  if (error) return { error: error.message };
+
+  await supabase.storage.from("wine-labels").remove([item.label_photo_url]);
+
+  revalidatePath("/wein");
+  revalidatePath("/inventory");
+  return {};
+}
