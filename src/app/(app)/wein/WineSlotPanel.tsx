@@ -243,7 +243,12 @@ export function WineSlotPanel({
                     <div className="mb-5">
                       {captureOpen ? (
                         <div className="space-y-2">
-                          <CameraCapture onCapture={handleCapturePhoto} value={null} label="Etikett fotografieren" />
+                          <CameraCapture
+                            onCapture={handleCapturePhoto}
+                            value={null}
+                            label="Etikett fotografieren"
+                            aspect="portrait"
+                          />
                           <button
                             type="button"
                             onClick={() => setCaptureOpen(false)}
