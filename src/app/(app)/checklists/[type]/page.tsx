@@ -20,6 +20,7 @@ import { PendingApprovals } from "../shared/PendingApprovals";
 import { ClosingMetaForm, HandoverNoteForm } from "../shared/ClosingExtras";
 import { Card } from "@/components/ui/Card";
 import { StampBadge } from "@/components/ui/StampBadge";
+import { syncBestellungChecklistItem } from "@/lib/orderChecklistSync";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
 
 export default async function ChecklistPage({ params }: { params: Promise<{ type: string }> }) {
@@ -92,6 +93,14 @@ export default async function ChecklistPage({ params }: { params: Promise<{ type
 
   const periodStart = periodStartFor(type);
   const submission = await getOrCreateSubmission(supabase, template.id, profile.id, periodStart);
+
+  // Keeps "Bestellung" (if the template has one) reflecting live order-list
+  // truth every time someone actually looks at this week's checklist — not
+  // just when an order-list action happens to fire while it's open. Never
+  // touches an already-submitted/approved record.
+  if (type === "weekly" && submission.status === "draft") {
+    await syncBestellungChecklistItem(supabase, profile.outlet_id);
+  }
 
   const { data: results } = await supabase
     .from("checklist_item_results")

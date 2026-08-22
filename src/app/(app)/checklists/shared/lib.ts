@@ -135,6 +135,9 @@ export function defaultTemplateItems(type: ChecklistType): ChecklistTemplateItem
       { text: "Lager aufgeräumt und Ware vorgezogen", requires_photo: false, category: "allgemein" },
       { text: "Bestand mit Sollbestand abgeglichen", requires_photo: false, category: "allgemein" },
       { text: "Gläserbruch erfasst", requires_photo: false, category: "allgemein" },
+      // No photo — this one is driven by the Bestellungen list (see
+      // syncBestellungChecklistItem), not by a manual tick.
+      { text: "Bestellung", requires_photo: false, category: "allgemein" },
     ];
   }
 

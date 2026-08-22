@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
+import { syncBestellungChecklistItem } from "@/lib/orderChecklistSync";
 import type { ActionState } from "@/lib/actionState";
 
 export async function createOrderItem(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -24,7 +25,10 @@ export async function createOrderItem(_prevState: ActionState, formData: FormDat
 
   if (error) return { error: error.message };
 
+  // A new open entry reopens an already-"done" Wochencheck Bestellung item.
+  await syncBestellungChecklistItem(supabase, profile.outlet_id);
   revalidatePath("/orders");
+  revalidatePath("/checklists/weekly");
   return { success: true };
 }
 
@@ -66,17 +70,21 @@ export async function setOrderItemStatus(id: string, status: "open" | "ordered")
 
   if (error) return { error: error.message };
 
+  if (profile.outlet_id) await syncBestellungChecklistItem(supabase, profile.outlet_id);
   revalidatePath("/orders");
+  revalidatePath("/checklists/weekly");
   return {};
 }
 
 export async function deleteOrderItem(id: string): Promise<{ error?: string }> {
-  await requireProfile();
+  const profile = await requireProfile();
   const supabase = await createClient();
 
   const { error } = await supabase.from("order_list_items").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  if (profile.outlet_id) await syncBestellungChecklistItem(supabase, profile.outlet_id);
   revalidatePath("/orders");
+  revalidatePath("/checklists/weekly");
   return {};
 }
