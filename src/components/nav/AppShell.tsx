@@ -60,13 +60,13 @@ export function AppShell({
   return (
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-60 md:flex-col border-r border-ink-border bg-ink-raised">
+      <aside className="hidden min-[900px]:flex min-[900px]:w-60 min-[900px]:flex-col border-r border-ink-border bg-ink-raised">
         <SidebarContent navGroups={navGroups} profile={profile} pathname={pathname} />
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile top bar */}
-        <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-ink-border bg-ink-raised">
+        <header className="min-[900px]:hidden flex items-center justify-between px-4 h-14 border-b border-ink-border bg-ink-raised">
           <button
             onClick={() => setOpen(true)}
             aria-label="Menue oeffnen"
@@ -82,7 +82,7 @@ export function AppShell({
         </header>
 
         {open && (
-          <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="min-[900px]:hidden fixed inset-0 z-50 flex">
             <div className="w-72 bg-ink-raised border-r border-ink-border flex flex-col">
               <div className="flex items-center justify-between px-4 h-14 border-b border-ink-border">
                 <span className="flex items-center gap-2">
@@ -104,14 +104,14 @@ export function AppShell({
           </div>
         )}
 
-        <div className="hidden md:flex items-center justify-between gap-4 px-8 pt-4">
+        <div className="hidden min-[900px]:flex items-center justify-between gap-4 px-8 pt-4">
           <GlobalSearch index={searchIndex} className="w-64" />
           <div className="flex items-center gap-3">
             <NotificationBell notifications={notifications} />
           </div>
         </div>
 
-        <main className="flex-1 min-w-0 p-4 md:px-8 md:pb-8 md:pt-2 max-w-6xl w-full mx-auto">{children}</main>
+        <main className="flex-1 min-w-0 p-4 min-[900px]:px-8 min-[900px]:pb-8 min-[900px]:pt-2 max-w-6xl w-full mx-auto">{children}</main>
       </div>
 
       {profile.outlet_id && (
@@ -139,7 +139,7 @@ function SidebarContent({
 }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="hidden md:flex flex-col items-center px-5 py-5 border-b border-ink-border">
+      <div className="hidden min-[900px]:flex flex-col items-center px-5 py-5 border-b border-ink-border">
         <Logo className="w-28 h-auto" />
         <p className="text-[0.6rem] tracking-[0.25em] uppercase text-parchment-dim mt-3">Bar-Management</p>
       </div>

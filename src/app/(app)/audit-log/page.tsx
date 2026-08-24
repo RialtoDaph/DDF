@@ -33,10 +33,10 @@ export default async function AuditLogPage() {
     .limit(100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-[var(--sp-lg)]">
       <div>
-        <h1 className="font-serif text-2xl md:text-3xl text-parchment">Audit-Log</h1>
-        <p className="text-sm text-parchment-dim mt-1">
+        <h1 className="font-serif font-semibold text-[length:var(--fs-h1)] text-parchment">Audit-Log</h1>
+        <p className="text-[length:var(--fs-body)] text-parchment-dim mt-1.5">
           {profile.role === "owner" ? "Alle Aktivitäten." : "Aktivitäten deines Standorts."}
         </p>
       </div>
