@@ -38,6 +38,7 @@ export function WineSlotPanel({
   const [displayItem, setDisplayItem] = useState<SlotData["item"]>(null);
   const [prevSlotId, setPrevSlotId] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [removeReason, setRemoveReason] = useState<"usage" | "waste">("usage");
 
   // Reset the panel's local state whenever it switches to a different slot
   // (or closes) — a render-time adjustment rather than an effect, so the
@@ -49,6 +50,7 @@ export function WineSlotPanel({
     setDisplayItem(active?.slot.item ?? null);
     setPickedItemId("");
     setCaptureOpen(false);
+    setRemoveReason("usage");
   }
 
   const open = !!active;
@@ -77,11 +79,15 @@ export function WineSlotPanel({
     if (!active) return;
     setError(null);
     startTransition(async () => {
-      const res = await removeBottle(active.slot.id, {
-        cabinetName: active.cabinetName,
-        rackNumber: active.rackNumber,
-        slotNumber: active.slot.slotNumber,
-      });
+      const res = await removeBottle(
+        active.slot.id,
+        {
+          cabinetName: active.cabinetName,
+          rackNumber: active.rackNumber,
+          slotNumber: active.slot.slotNumber,
+        },
+        removeReason,
+      );
       if (res?.error) {
         setError(res.error);
         return;
@@ -287,6 +293,16 @@ export function WineSlotPanel({
                     </div>
                   )}
 
+                  <div className="mb-2">
+                    <Select
+                      value={removeReason}
+                      onChange={(e) => setRemoveReason(e.target.value as "usage" | "waste")}
+                      aria-label="Grund für die Entnahme"
+                    >
+                      <option value="usage">Verkauft/Verwendet</option>
+                      <option value="waste">Schwund/Verderb (zerbrochen o. Ä.)</option>
+                    </Select>
+                  </div>
                   <Button type="button" variant="ghost" className="w-full" disabled={pending} onClick={handleRemove}>
                     {pending ? "…" : "↑ Ausgang — Flasche entnehmen"}
                   </Button>
