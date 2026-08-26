@@ -6,7 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StampBadge } from "@/components/ui/StampBadge";
 import { QuizPlayer } from "./QuizPlayer";
 import { QuizBuilder } from "./QuizBuilder";
-import { AddVideoForm } from "./AddVideoForm";
+import { VideoSection } from "./VideoSection";
 import { EditModuleForm } from "./EditModuleForm";
 import { recipeDisplayUnit } from "@/lib/recipeCost";
 import { driveEmbedUrl } from "../shared/driveVideo";
@@ -100,27 +100,7 @@ export default async function TrainingModuleDetailPage({ params }: { params: Pro
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4">
-          {videoUrl && (
-            <Card>
-              {videoEmbedUrl ? (
-                <iframe
-                  src={videoEmbedUrl}
-                  allow="autoplay"
-                  allowFullScreen
-                  className="w-full aspect-video rounded-md border-0"
-                />
-              ) : (
-                <video src={videoUrl} controls className="mx-auto block max-h-[60vh] w-auto max-w-full rounded-md" />
-              )}
-            </Card>
-          )}
-
-          {!videoUrl && canManage && (
-            <Card>
-              <CardHeader title="Video hinzufügen" />
-              <AddVideoForm moduleId={id} />
-            </Card>
-          )}
+          <VideoSection moduleId={id} videoUrl={videoUrl} videoEmbedUrl={videoEmbedUrl} canManage={canManage} />
         </div>
 
         <div className="space-y-4">

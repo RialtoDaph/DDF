@@ -24,6 +24,8 @@ export type ChecklistType = "opening" | "closing" | "weekly" | "monthly";
 export type SubmissionStatus = "draft" | "submitted" | "approved";
 export type QuizQuestionType = "multiple_choice" | "short_answer";
 export type TrainingStatus = "not_started" | "in_progress" | "passed";
+export type OrderItemStatus = "open" | "ordered";
+export type WineType = "rot" | "weiss" | "rose" | "sekt";
 
 export interface ChecklistTemplateItem {
   text: string;
@@ -100,6 +102,8 @@ export interface Database {
           is_perishable: boolean;
           default_supplier_id: string | null;
           description: string | null;
+          wine_type: WineType | null;
+          label_photo_url: string | null;
           created_at: string;
         },
         {
@@ -115,6 +119,8 @@ export interface Database {
           is_perishable?: boolean;
           default_supplier_id?: string | null;
           description?: string | null;
+          wine_type?: WineType | null;
+          label_photo_url?: string | null;
         }
       >;
       stock_movements: Table<
@@ -374,6 +380,72 @@ export interface Database {
         { id: string; outlet_id: string; label: string; event_date: string; created_by: string | null; created_at: string },
         { id?: string; outlet_id: string; label: string; event_date: string; created_by?: string | null }
       >;
+      order_list_items: Table<
+        {
+          id: string;
+          outlet_id: string;
+          item_name: string;
+          quantity: string | null;
+          supplier_id: string | null;
+          supplier_name: string | null;
+          notes: string | null;
+          status: OrderItemStatus;
+          created_by: string | null;
+          created_at: string;
+          ordered_at: string | null;
+          ordered_by: string | null;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          item_name: string;
+          quantity?: string | null;
+          supplier_id?: string | null;
+          supplier_name?: string | null;
+          notes?: string | null;
+          status?: OrderItemStatus;
+          created_by?: string | null;
+          ordered_at?: string | null;
+          ordered_by?: string | null;
+        }
+      >;
+      wine_cabinets: Table<
+        {
+          id: string;
+          outlet_id: string;
+          name: string;
+          temperature_c: number | null;
+          sort_order: number;
+          created_at: string;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          name: string;
+          temperature_c?: number | null;
+          sort_order?: number;
+        }
+      >;
+      wine_slots: Table<
+        {
+          id: string;
+          cabinet_id: string;
+          rack_number: number;
+          slot_number: number;
+          inventory_item_id: string | null;
+          flipped: boolean;
+          updated_at: string;
+        },
+        {
+          id?: string;
+          cabinet_id: string;
+          rack_number: number;
+          slot_number: number;
+          inventory_item_id?: string | null;
+          flipped?: boolean;
+        },
+        { inventory_item_id?: string | null; flipped?: boolean; updated_at?: string }
+      >;
     };
     Views: Record<string, never>;
     Functions: {
@@ -399,6 +471,8 @@ export interface Database {
       submission_status: SubmissionStatus;
       quiz_question_type: QuizQuestionType;
       training_status: TrainingStatus;
+      order_item_status: OrderItemStatus;
+      wine_type: WineType;
     };
     CompositeTypes: Record<string, never>;
   };

@@ -25,12 +25,16 @@ export function CameraCapture({
   onClear,
   value,
   label = "Foto aufnehmen",
+  aspect = "video",
 }: {
   onCapture: (photo: CapturedPhoto) => void;
   onClear?: () => void;
   value?: CapturedPhoto | { previewUrl: string; takenAt: string } | null;
   label?: string;
+  /** "video" (16:9, default — round-check/checklist photos) or "portrait" (3:4 — e.g. a bottle label), both for the stream request and the preview box. */
+  aspect?: "video" | "portrait";
 }) {
+  const aspectClass = aspect === "portrait" ? "aspect-[3/4]" : "aspect-video";
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -60,7 +64,10 @@ export function CameraCapture({
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
+        video:
+          aspect === "portrait"
+            ? { facingMode: { ideal: "environment" }, width: { ideal: 1080 }, height: { ideal: 1440 } }
+            : { facingMode: { ideal: "environment" } },
         audio: false,
       });
       streamRef.current = stream;
@@ -140,7 +147,7 @@ export function CameraCapture({
       <div className="space-y-2">
         <div className="relative rounded-md overflow-hidden border border-ink-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value.previewUrl} alt="Aufgenommenes Foto" className="w-full aspect-video object-cover" />
+          <img src={value.previewUrl} alt="Aufgenommenes Foto" className={cn("w-full object-cover", aspectClass)} />
           {onClear && (
             <button
               type="button"
@@ -174,7 +181,7 @@ export function CameraCapture({
       {streaming ? (
         <div className="space-y-2">
           <div className="relative rounded-md overflow-hidden border border-ink-border bg-black">
-            <video ref={videoRef} playsInline muted className="w-full aspect-video object-cover" />
+            <video ref={videoRef} playsInline muted className={cn("w-full object-cover", aspectClass)} />
           </div>
           <div className="flex gap-2">
             <Button type="button" onClick={shoot} className="flex-1">

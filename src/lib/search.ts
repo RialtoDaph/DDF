@@ -15,14 +15,18 @@ export async function getSearchIndex(
   supabase: SupabaseClient<Database>,
   profile: Profile,
 ): Promise<SearchEntry[]> {
-  const [{ data: items }, { data: tasks }, { data: sections }, { data: users }] = await Promise.all([
-    supabase.from("inventory_items").select("id, name"),
-    supabase.from("tasks").select("id, title").neq("status", "done"),
-    profile.outlet_id
-      ? supabase.from("handbook_sections").select("id, title").eq("outlet_id", profile.outlet_id)
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
-    canManageUsers(profile.role) ? supabase.from("users").select("id, name") : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-  ]);
+  const [{ data: items }, { data: tasks }, { data: sections }, { data: users }, { data: orderItems }] =
+    await Promise.all([
+      supabase.from("inventory_items").select("id, name"),
+      supabase.from("tasks").select("id, title").neq("status", "done"),
+      profile.outlet_id
+        ? supabase.from("handbook_sections").select("id, title").eq("outlet_id", profile.outlet_id)
+        : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+      canManageUsers(profile.role) ? supabase.from("users").select("id, name") : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      profile.outlet_id
+        ? supabase.from("order_list_items").select("id, item_name").eq("outlet_id", profile.outlet_id).eq("status", "open")
+        : Promise.resolve({ data: [] as { id: string; item_name: string }[] }),
+    ]);
 
   const entries: SearchEntry[] = [];
 
@@ -37,6 +41,9 @@ export async function getSearchIndex(
   }
   for (const u of users ?? []) {
     entries.push({ id: `user-${u.id}`, label: u.name, type: "Benutzer", href: `/users` });
+  }
+  for (const o of orderItems ?? []) {
+    entries.push({ id: `order-${o.id}`, label: o.item_name, type: "Bestellung", href: `/orders` });
   }
 
   return entries;

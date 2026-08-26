@@ -7,7 +7,7 @@ import { isValidVideoLink } from "../shared/driveVideo";
 import { Input, Label } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 
-export function AddVideoForm({ moduleId }: { moduleId: string }) {
+export function AddVideoForm({ moduleId, onDone }: { moduleId: string; onDone?: () => void }) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,6 +30,7 @@ export function AddVideoForm({ moduleId }: { moduleId: string }) {
       setError(result.error);
       return;
     }
+    onDone?.();
     router.refresh();
   }
 

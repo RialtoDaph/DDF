@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { requiresUnitVolume } from "./units";
-import type { ItemCategory, MovementReason, MovementType } from "@/lib/database.types";
+import type { ItemCategory, MovementReason, MovementType, WineType } from "@/lib/database.types";
 
 export async function createItem(_prevState: unknown, formData: FormData) {
   const profile = await requireProfile();
@@ -24,12 +24,14 @@ export async function createItem(_prevState: unknown, formData: FormData) {
   }
 
   const name = String(formData.get("name") ?? "").trim();
+  const category = formData.get("category") as ItemCategory;
+  const wineType = category === "wine" ? (String(formData.get("wine_type") ?? "") as WineType) || null : null;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("inventory_items")
     .insert({
       name,
-      category: formData.get("category") as ItemCategory,
+      category,
       unit,
       unit_volume_ml: unitVolumeMl,
       par_level: Number(formData.get("par_level") ?? 0),
@@ -38,6 +40,7 @@ export async function createItem(_prevState: unknown, formData: FormData) {
       is_perishable: formData.get("is_perishable") === "on",
       default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
       description: String(formData.get("description") ?? "").trim() || null,
+      wine_type: wineType,
       outlet_id: profile.outlet_id,
     })
     .select("id")
@@ -116,12 +119,14 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   const purchasePrice = formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null;
+  const category = formData.get("category") as ItemCategory;
+  const wineType = category === "wine" ? (String(formData.get("wine_type") ?? "") as WineType) || null : null;
   const supabase = await createClient();
   const { error } = await supabase
     .from("inventory_items")
     .update({
       name,
-      category: formData.get("category") as ItemCategory,
+      category,
       unit,
       unit_volume_ml: unitVolumeMl,
       par_level: Number(formData.get("par_level") ?? 0),
@@ -129,6 +134,7 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
       is_perishable: formData.get("is_perishable") === "on",
       default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
       description: String(formData.get("description") ?? "").trim() || null,
+      wine_type: wineType,
     })
     .eq("id", id);
 

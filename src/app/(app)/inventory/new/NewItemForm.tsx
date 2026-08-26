@@ -55,6 +55,19 @@ export function NewItemForm({ suppliers }: { suppliers: { id: string; name: stri
           </datalist>
         </div>
       </div>
+      {category === "wine" && (
+        <div>
+          <Label htmlFor="wine_type">Weinart</Label>
+          <Select id="wine_type" name="wine_type" defaultValue="">
+            <option value="">— nicht gesetzt —</option>
+            <option value="rot">Rotwein</option>
+            <option value="weiss">Weißwein</option>
+            <option value="rose">Rosé</option>
+            <option value="sekt">Sekt</option>
+          </Select>
+          <p className="text-xs text-parchment-dim mt-1">Wird für die Farbcodierung in der Weinschrank-Karte genutzt.</p>
+        </div>
+      )}
       {!isMeasurementUnit(unit) && (
         <div>
           <Label htmlFor="unit_volume_ml">
