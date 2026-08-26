@@ -96,16 +96,22 @@ export async function setOrderItemStatus(id: string, status: "open" | "ordered")
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("order_list_items")
     .update(
       status === "ordered"
         ? { status, ordered_at: new Date().toISOString(), ordered_by: profile.id }
         : { status, ordered_at: null, ordered_by: null },
     )
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  // RLS can silently match zero rows (no error, no update) instead of
+  // failing loudly — without this check the checkbox looks "saved" until
+  // the next reload shows the unchanged status.
+  if (!data) return { error: "Eintrag nicht gefunden oder keine Berechtigung." };
 
   if (profile.outlet_id) await syncBestellungChecklistItem(supabase, profile.outlet_id);
   revalidatePath("/orders");

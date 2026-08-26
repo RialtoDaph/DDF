@@ -33,9 +33,9 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto paper-card p-2 z-50 shadow-xl">
+          <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-80 max-h-96 overflow-y-auto rounded-xl border border-ink-border bg-ink-card p-1.5 shadow-2xl">
             {notifications.length === 0 ? (
-              <p className="text-sm text-parchment-dim p-3">Keine Benachrichtigungen.</p>
+              <p className="text-sm text-parchment-dim px-2.5 py-2">Keine Benachrichtigungen.</p>
             ) : (
               <ul className="divide-y divide-ink-border">
                 {notifications.map((n) => (
@@ -43,7 +43,7 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
                     <Link
                       href={n.href}
                       onClick={() => setOpen(false)}
-                      className="flex items-start gap-2 px-2 py-2.5 text-sm hover:bg-ink-raised rounded-md"
+                      className="flex items-start gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-ink-raised"
                     >
                       <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", n.severity === "warn" ? "bg-warn" : "bg-wine")} />
                       <span className="text-parchment-dim">{n.message}</span>
