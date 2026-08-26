@@ -99,6 +99,7 @@ export interface Database {
           outlet_id: string;
           is_perishable: boolean;
           default_supplier_id: string | null;
+          description: string | null;
           created_at: string;
         },
         {
@@ -113,6 +114,7 @@ export interface Database {
           outlet_id: string;
           is_perishable?: boolean;
           default_supplier_id?: string | null;
+          description?: string | null;
         }
       >;
       stock_movements: Table<

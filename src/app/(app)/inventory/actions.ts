@@ -37,6 +37,7 @@ export async function createItem(_prevState: unknown, formData: FormData) {
       purchase_price: formData.get("purchase_price") ? Number(formData.get("purchase_price")) : null,
       is_perishable: formData.get("is_perishable") === "on",
       default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
+      description: String(formData.get("description") ?? "").trim() || null,
       outlet_id: profile.outlet_id,
     })
     .select("id")
@@ -127,6 +128,7 @@ export async function updateItem(_prevState: unknown, formData: FormData) {
       purchase_price: purchasePrice,
       is_perishable: formData.get("is_perishable") === "on",
       default_supplier_id: String(formData.get("default_supplier_id") ?? "") || null,
+      description: String(formData.get("description") ?? "").trim() || null,
     })
     .eq("id", id);
 
