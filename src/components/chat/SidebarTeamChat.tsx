@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
+import { MessageCircle, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatTimestamp } from "@/lib/utils";
 
@@ -15,7 +15,7 @@ interface ChatMessage {
 
 const lastSeenKey = (outletId: string) => `ddf-chat-lastseen-${outletId}`;
 
-export function FloatingChat({
+export function SidebarTeamChat({
   outletId,
   currentUserId,
   currentUserName,
@@ -28,9 +28,8 @@ export function FloatingChat({
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [open, setOpen] = useState(false);
-  // Computed once from localStorage at mount (client-only value — the
-  // badge legitimately differs from the server-rendered "0", see
-  // suppressHydrationWarning below).
+  // Computed once from localStorage at mount (client-only value — the badge
+  // legitimately differs from the server-rendered "0", see the effect below).
   const [unread, setUnread] = useState(() => {
     if (typeof window === "undefined") return 0;
     const lastSeen = localStorage.getItem(lastSeenKey(outletId));
@@ -105,44 +104,40 @@ export function FloatingChat({
   }
 
   return (
-    <>
+    <div className="border-t border-ink-border">
       <button
         type="button"
         onClick={toggle}
-        aria-label="Chat oeffnen"
-        className="fixed bottom-5 right-5 z-50 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-wine-deep shadow-[0_8px_20px_rgba(0,0,0,0.4)] hover:bg-wine-soft transition-colors"
+        className="flex w-full items-center justify-between px-3 py-2.5 text-sm text-parchment-dim hover:text-parchment transition-colors"
       >
-        <MessageCircle size={22} className="text-parchment" />
-        {unread > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-warn px-1 text-[0.65rem] font-semibold text-ink shadow-[0_0_0_2px_var(--color-ink-raised)]">
-            {unread}
-          </span>
-        )}
+        <span className="flex items-center gap-2">
+          <MessageCircle size={16} />
+          Team-Chat
+          {!open && unread > 0 && (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-warn px-1 text-[0.6rem] font-semibold text-ink">
+              {unread}
+            </span>
+          )}
+        </span>
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
       {open && (
-        <div className="fixed bottom-[86px] right-5 z-50 flex h-[420px] w-80 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-ink-border bg-ink-raised shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center justify-between border-b border-ink-border px-3.5 py-3">
-            <span className="font-serif text-sm text-parchment">Chat</span>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Chat schliessen" className="text-parchment-dim hover:text-parchment">
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-2.5">
+        <div className="flex flex-col border-t border-ink-border">
+          <div className="max-h-56 overflow-y-auto px-3 py-2.5 space-y-2">
             {messages.length === 0 ? (
-              <p className="text-sm text-parchment-dim">Noch keine Nachrichten.</p>
+              <p className="text-xs text-parchment-dim">Noch keine Nachrichten.</p>
             ) : (
               messages.map((m) => {
                 const isOwn = m.user_id === currentUserId;
                 return (
                   <div key={m.id} className={cn("flex flex-col gap-0.5", isOwn ? "items-end" : "items-start")}>
-                    <span className="text-[0.65rem] text-parchment-dim">
+                    <span className="text-[0.6rem] text-parchment-dim">
                       {m.user_name} · {formatTimestamp(m.created_at)}
                     </span>
                     <span
                       className={cn(
-                        "max-w-[85%] rounded-xl px-3 py-2 text-xs break-words",
+                        "max-w-[90%] rounded-xl px-2.5 py-1.5 text-xs break-words",
                         isOwn ? "bg-wine text-ink" : "bg-ink-card text-parchment",
                       )}
                     >
@@ -155,25 +150,25 @@ export function FloatingChat({
             <div ref={bottomRef} />
           </div>
 
-          {sendError && <p className="px-3.5 pt-2 text-[0.65rem] text-warn">{sendError}</p>}
-          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-ink-border px-3 py-2.5">
+          {sendError && <p className="px-3 pt-1 text-[0.6rem] text-warn">{sendError}</p>}
+          <form onSubmit={handleSend} className="flex items-center gap-2 px-3 py-2">
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Nachricht…"
-              className="flex-1 min-w-0 rounded-lg border border-ink-border bg-ink-card px-2.5 py-2 text-xs text-parchment placeholder:text-parchment-dim outline-none focus:border-wine"
+              className="flex-1 min-w-0 rounded-lg border border-ink-border bg-ink-card px-2.5 py-1.5 text-xs text-parchment placeholder:text-parchment-dim outline-none focus:border-wine"
             />
             <button
               type="submit"
               disabled={sending || !draft.trim()}
               aria-label="Senden"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-wine-deep text-parchment disabled:opacity-40"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-wine-deep text-parchment disabled:opacity-40"
             >
-              <Send size={14} />
+              <Send size={13} />
             </button>
           </form>
         </div>
       )}
-    </>
+    </div>
   );
 }

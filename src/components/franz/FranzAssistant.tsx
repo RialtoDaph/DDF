@@ -54,13 +54,13 @@ export function FranzAssistant() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label="Franz oeffnen"
-        className="fixed bottom-5 left-5 z-50 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-wine-deep shadow-[0_8px_20px_rgba(0,0,0,0.4)] hover:bg-wine-soft transition-colors"
+        className="fixed bottom-5 right-5 z-50 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-wine-deep shadow-[0_8px_20px_rgba(0,0,0,0.4)] hover:bg-wine-soft transition-colors"
       >
         <Sparkles size={22} className="text-parchment" />
       </button>
 
       {open && (
-        <div className="fixed bottom-[86px] left-5 z-50 flex h-[440px] w-80 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-ink-border bg-ink-raised shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
+        <div className="fixed bottom-[86px] right-5 z-50 flex h-[440px] w-80 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-ink-border bg-ink-raised shadow-[0_16px_40px_rgba(0,0,0,0.5)]">
           <div className="flex items-center justify-between border-b border-ink-border px-3.5 py-3">
             <div>
               <span className="font-serif text-sm text-parchment">Franz</span>
