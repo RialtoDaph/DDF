@@ -14,6 +14,7 @@ import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { FranzAssistant } from "@/components/franz/FranzAssistant";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -122,6 +123,7 @@ export function AppShell({
           initialMessages={chatMessages}
         />
       )}
+      <FranzAssistant />
     </div>
   );
 }
