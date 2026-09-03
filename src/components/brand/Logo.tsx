@@ -34,3 +34,17 @@ export function LogoMark({ className }: { className?: string }) {
     />
   );
 }
+
+/** Just Franz's head (top hat + mustache), cropped from the main mark — used where the assistant needs a face rather than the glass. */
+export function FranzFace({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/franz-face.png"
+      alt=""
+      aria-hidden
+      width={406}
+      height={433}
+      className={cn("select-none", className)}
+    />
+  );
+}
