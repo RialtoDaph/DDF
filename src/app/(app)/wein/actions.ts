@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import type { ActionState } from "@/lib/actionState";
+import type { MovementReason } from "@/lib/database.types";
+
+const REMOVE_REASON_LABEL: Record<string, string> = {
+  usage: "verkauft/verwendet",
+  waste: "Schwund/Verderb",
+};
 
 const RACK_COUNT = 15;
 const SLOTS_PER_RACK = 9;
@@ -109,6 +115,7 @@ export async function assignBottle(
 export async function removeBottle(
   slotId: string,
   context: { cabinetName: string; rackNumber: number; slotNumber: number },
+  reason: Extract<MovementReason, "usage" | "waste"> = "usage",
 ): Promise<{ error?: string }> {
   const profile = await requireProfile();
   const supabase = await createClient();
@@ -125,13 +132,17 @@ export async function removeBottle(
     .eq("id", slotId);
   if (updateError) return { error: updateError.message };
 
+  // Selling/pouring a bottle and breaking/spoiling one both empty the slot,
+  // but they mean different things for stock reporting — let the caller
+  // pick which stock_movements reason applies instead of always recording
+  // "usage" regardless of what actually happened to the bottle.
   const { error: movementError } = await supabase.from("stock_movements").insert({
     item_id: itemId,
     type: "out",
     quantity: 1,
-    reason: "usage",
+    reason,
     user_id: profile.id,
-    notes: `Weinschrank ${context.cabinetName}, Fach ${context.rackNumber}, Platz ${context.slotNumber}`,
+    notes: `Weinschrank ${context.cabinetName}, Fach ${context.rackNumber}, Platz ${context.slotNumber} (${REMOVE_REASON_LABEL[reason]})`,
   });
   if (movementError) return { error: movementError.message };
 

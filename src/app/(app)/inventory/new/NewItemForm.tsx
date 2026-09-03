@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createItem } from "../actions";
-import { Input, Label, Select } from "@/components/ui/Field";
+import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { UNIT_SUGGESTIONS, isMeasurementUnit, requiresUnitVolume } from "../units";
 
@@ -22,13 +22,7 @@ export function NewItemForm({ suppliers }: { suppliers: { id: string; name: stri
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="category">Kategorie</Label>
-          <Select
-            id="category"
-            name="category"
-            required
-            defaultValue="spirits"
-            onChange={(e) => setCategory(e.target.value)}
-          >
+          <Select id="category" name="category" required value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="spirits">Spirituosen</option>
             <option value="beer">Bier</option>
             <option value="wine">Wein</option>
@@ -104,6 +98,17 @@ export function NewItemForm({ suppliers }: { suppliers: { id: string; name: stri
         <Label htmlFor="purchase_price">Einkaufspreis (€)</Label>
         <Input id="purchase_price" name="purchase_price" type="number" step="0.01" min="0" />
       </div>
+      {category === "wine" && (
+        <div>
+          <Label htmlFor="description">Beschreibung</Label>
+          <Textarea
+            id="description"
+            name="description"
+            rows={4}
+            placeholder="Kurze Geschichte des Weins, Rebsorte/Region, passende Speisenempfehlungen …"
+          />
+        </div>
+      )}
       <div>
         <Label htmlFor="default_supplier_id">Standard-Lieferant</Label>
         <Select id="default_supplier_id" name="default_supplier_id" defaultValue="">

@@ -13,8 +13,8 @@ import { signOut } from "@/app/auth/actions";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
-import { FloatingChat } from "@/components/chat/FloatingChat";
-import { FranzChat } from "@/components/franz/FranzChat";
+import { TeamChatNavLink } from "@/components/chat/TeamChatNavLink";
+import { FranzAssistant } from "@/components/franz/FranzAssistant";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -30,26 +30,17 @@ interface ChatMessage {
   user_name: string;
 }
 
-interface FranzMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  created_at: string;
-}
-
 export function AppShell({
   profile,
   notifications,
   searchIndex,
   chatMessages,
-  franzMessages,
   children,
 }: {
   profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   notifications: Notification[];
   searchIndex: SearchEntry[];
   chatMessages: ChatMessage[];
-  franzMessages: FranzMessage[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -71,7 +62,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden min-[900px]:flex min-[900px]:w-60 min-[900px]:flex-col border-r border-ink-border bg-ink-raised">
-        <SidebarContent navGroups={navGroups} profile={profile} pathname={pathname} />
+        <SidebarContent navGroups={navGroups} profile={profile} pathname={pathname} chatMessages={chatMessages} />
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0">
@@ -107,6 +98,7 @@ export function AppShell({
                 navGroups={navGroups}
                 profile={profile}
                 pathname={pathname}
+                chatMessages={chatMessages}
                 onNavigate={() => setOpen(false)}
               />
             </div>
@@ -124,15 +116,7 @@ export function AppShell({
         <main className="flex-1 min-w-0 p-4 min-[900px]:px-8 min-[900px]:pb-8 min-[900px]:pt-2 max-w-6xl w-full mx-auto">{children}</main>
       </div>
 
-      {profile.outlet_id && (
-        <FloatingChat
-          outletId={profile.outlet_id}
-          currentUserId={profile.id}
-          currentUserName={profile.name}
-          initialMessages={chatMessages}
-        />
-      )}
-      <FranzChat initialMessages={franzMessages} />
+      <FranzAssistant />
     </div>
   );
 }
@@ -141,11 +125,13 @@ function SidebarContent({
   navGroups,
   profile,
   pathname,
+  chatMessages,
   onNavigate,
 }: {
   navGroups: NavGroup[];
-  profile: { name: string; role: UserRole; email: string };
+  profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   pathname: string;
+  chatMessages: ChatMessage[];
   onNavigate?: () => void;
 }) {
   return (
@@ -191,6 +177,18 @@ function SidebarContent({
           </div>
         ))}
       </nav>
+
+      {profile.outlet_id && (
+        <div className="border-t border-ink-border px-2 py-2">
+          <TeamChatNavLink
+            outletId={profile.outlet_id}
+            currentUserId={profile.id}
+            initialMessages={chatMessages}
+            active={pathname === "/chat"}
+            onNavigate={onNavigate}
+          />
+        </div>
+      )}
 
       <div className="border-t border-ink-border px-3 py-3">
         <div className="px-2 mb-2">

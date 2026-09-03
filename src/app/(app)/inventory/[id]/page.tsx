@@ -74,6 +74,13 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
               <GaugeBar current={item.current_stock} par={item.par_level} unit={item.unit} unitVolumeMl={item.unit_volume_ml} />
             </Card>
 
+            {item.description && (
+              <Card>
+                <CardHeader title="Beschreibung" />
+                <p className="text-sm text-parchment-dim whitespace-pre-wrap">{item.description}</p>
+              </Card>
+            )}
+
             <Card>
               <CardHeader title="Neue Bewegung erfassen" />
               <MovementForm itemId={item.id} unit={item.unit} suppliers={suppliers ?? []} canAdjust={canManage} />

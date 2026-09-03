@@ -3,54 +3,22 @@ import { AppShell } from "@/components/nav/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getNotifications } from "@/lib/notifications";
 import { getSearchIndex } from "@/lib/search";
+import { getRecentChatMessages } from "@/lib/chat";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [notifications, searchIndex, chatMessages, franzMessages] = await Promise.all([
+  // Only used to seed the sidebar's unread badge — the full history loads
+  // separately on /chat.
+  const [notifications, searchIndex, chatMessages] = await Promise.all([
     getNotifications(supabase, profile),
     getSearchIndex(supabase, profile),
-    profile.outlet_id
-      ? supabase
-          .from("chat_messages")
-          // Newest 50 first off the wire (LIMIT must keep the *recent* history,
-          // not the oldest messages ever sent), then re-sorted ascending for display.
-          .select("id, content, created_at, user_id, users(name)")
-          .eq("outlet_id", profile.outlet_id)
-          .order("created_at", { ascending: false })
-          .limit(50)
-          .then(({ data }) =>
-            (data ?? [])
-              .map((m) => ({
-                id: m.id,
-                content: m.content,
-                created_at: m.created_at,
-                user_id: m.user_id,
-                user_name: (m.users as unknown as { name: string } | null)?.name ?? "—",
-              }))
-              .reverse(),
-          )
-      : Promise.resolve([]),
-    // Franz's history is private to this user (see franz_messages RLS) —
-    // no outlet_id gate needed, unlike the shared team chat above.
-    supabase
-      .from("franz_messages")
-      .select("id, role, content, created_at")
-      .eq("user_id", profile.id)
-      .order("created_at", { ascending: false })
-      .limit(30)
-      .then(({ data }) => (data ?? []).slice().reverse()),
+    getRecentChatMessages(supabase, profile.outlet_id, 50),
   ]);
 
   return (
-    <AppShell
-      profile={profile}
-      notifications={notifications}
-      searchIndex={searchIndex}
-      chatMessages={chatMessages}
-      franzMessages={franzMessages}
-    >
+    <AppShell profile={profile} notifications={notifications} searchIndex={searchIndex} chatMessages={chatMessages}>
       {children}
     </AppShell>
   );

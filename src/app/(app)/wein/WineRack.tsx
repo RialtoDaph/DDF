@@ -19,6 +19,8 @@ export function WineRack({
   const filledCount = slots.filter((s) => s.item).length;
   const isEmpty = filledCount === 0;
   const isLow = filledCount > 0 && filledCount <= 2;
+  const backRow = slots.slice(0, 5);
+  const frontRow = slots.slice(5);
 
   return (
     <div
@@ -74,10 +76,20 @@ export function WineRack({
       </button>
 
       {open && (
-        <div className="flex flex-wrap gap-2.5 px-2.5 pb-3 pl-[calc(3.5rem+0.75rem)]">
-          {slots.map((slot) => (
-            <WineBottle key={slot.id} slot={slot} onSelect={() => onSelectSlot(slot)} />
-          ))}
+        <div className="space-y-1 px-2.5 pb-3 pl-[calc(3.5rem+0.75rem)]">
+          {/* Real racks nest the bottles in a staggered diamond pattern, not
+              a straight line — back row of 5, front row of 4 offset by half
+              a bottle's pitch so each front bottle sits in the gap behind it. */}
+          <div className="flex flex-wrap gap-2.5">
+            {backRow.map((slot) => (
+              <WineBottle key={slot.id} slot={slot} onSelect={() => onSelectSlot(slot)} />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2.5 pl-5">
+            {frontRow.map((slot) => (
+              <WineBottle key={slot.id} slot={slot} onSelect={() => onSelectSlot(slot)} />
+            ))}
+          </div>
         </div>
       )}
     </div>

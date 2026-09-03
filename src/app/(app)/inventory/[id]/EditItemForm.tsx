@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { updateItem, deleteItem } from "../actions";
-import { Input, Label, Select } from "@/components/ui/Field";
+import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import type { ItemCategory, WineType } from "@/lib/database.types";
 import { type ActionState, initialActionState } from "@/lib/actionState";
@@ -22,6 +22,7 @@ export function EditItemForm({
     purchase_price: number | null;
     is_perishable: boolean;
     default_supplier_id: string | null;
+    description: string | null;
     wine_type: WineType | null;
   };
   suppliers: { id: string; name: string }[];
@@ -60,7 +61,7 @@ export function EditItemForm({
           <Select
             id="edit-category"
             name="category"
-            defaultValue={item.category}
+            value={category}
             onChange={(e) => setCategory(e.target.value as ItemCategory)}
           >
             <option value="spirits">Spirituosen</option>
@@ -141,6 +142,18 @@ export function EditItemForm({
           />
         </div>
       </div>
+      {category === "wine" && (
+        <div>
+          <Label htmlFor="edit-description">Beschreibung</Label>
+          <Textarea
+            id="edit-description"
+            name="description"
+            rows={4}
+            defaultValue={item.description ?? ""}
+            placeholder="Kurze Geschichte des Weins, Rebsorte/Region, passende Speisenempfehlungen …"
+          />
+        </div>
+      )}
       <div>
         <Label htmlFor="edit-default-supplier">Standard-Lieferant</Label>
         <Select id="edit-default-supplier" name="default_supplier_id" defaultValue={item.default_supplier_id ?? ""}>

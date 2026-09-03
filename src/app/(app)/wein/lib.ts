@@ -18,6 +18,8 @@ export interface WineItem {
   unit: string;
   /** Signed URL, already ready to render — null if no label photo is on file. */
   labelPhotoUrl: string | null;
+  /** Short producer/region story and food-pairing notes, if set. */
+  description: string | null;
 }
 
 export interface SlotData {

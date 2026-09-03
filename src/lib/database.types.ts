@@ -101,6 +101,7 @@ export interface Database {
           outlet_id: string;
           is_perishable: boolean;
           default_supplier_id: string | null;
+          description: string | null;
           wine_type: WineType | null;
           label_photo_url: string | null;
           created_at: string;
@@ -117,6 +118,7 @@ export interface Database {
           outlet_id: string;
           is_perishable?: boolean;
           default_supplier_id?: string | null;
+          description?: string | null;
           wine_type?: WineType | null;
           label_photo_url?: string | null;
         }
@@ -422,23 +424,6 @@ export interface Database {
           name: string;
           temperature_c?: number | null;
           sort_order?: number;
-        }
-      >;
-      franz_messages: Table<
-        {
-          id: string;
-          user_id: string;
-          outlet_id: string | null;
-          role: "user" | "assistant";
-          content: string;
-          created_at: string;
-        },
-        {
-          id?: string;
-          user_id: string;
-          outlet_id?: string | null;
-          role: "user" | "assistant";
-          content: string;
         }
       >;
       wine_slots: Table<

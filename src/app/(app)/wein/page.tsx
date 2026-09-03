@@ -25,7 +25,7 @@ export default async function WeinPage() {
       .order("sort_order", { ascending: true }),
     supabase
       .from("inventory_items")
-      .select("id, name, wine_type, current_stock, unit, label_photo_url")
+      .select("id, name, wine_type, current_stock, unit, label_photo_url, description")
       .eq("outlet_id", profile.outlet_id)
       .eq("category", "wine")
       .order("name"),
@@ -42,6 +42,7 @@ export default async function WeinPage() {
         ? ((await supabase.storage.from("wine-labels").createSignedUrl(w.label_photo_url, 3600)).data?.signedUrl ??
           null)
         : null,
+      description: w.description,
     })),
   );
   const wineItemsById = new Map(wineItems.map((w) => [w.id, w]));

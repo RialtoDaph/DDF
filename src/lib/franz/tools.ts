@@ -4,287 +4,90 @@ import type { Database } from "@/lib/database.types";
 import type { Profile } from "@/lib/auth";
 import { canManageMasterData } from "@/lib/auth";
 import { recipeLineCost } from "@/lib/recipeCost";
-import { CHECKLIST_TYPES, CHECKLIST_LABEL, periodStartFor } from "@/app/(app)/checklists/shared/lib";
+import { periodStartFor, isChecklistType, CHECKLIST_LABEL } from "@/app/(app)/checklists/shared/lib";
 
-export interface FranzToolContext {
-  supabase: SupabaseClient<Database>;
-  profile: Profile;
-}
-
-// German labels for the LLM's own output — Franz should talk in the app's
-// vocabulary, not echo the raw enum values back at staff.
-const CATEGORY_LABEL: Record<string, string> = {
-  spirits: "Spirituosen",
-  beer: "Bier",
-  wine: "Wein",
-  mixer: "Mixer",
-  garnish: "Garnitur",
-  herbs_produce: "Frische Kräuter & Früchte",
-  juice: "Saft",
-  liqueur: "Likör",
-  schnapps: "Schnaps",
-  syrup: "Sirup",
-  bitters: "Bitter",
-  consumable: "Verbrauch",
-};
-
-/**
- * Every tool here reads through the caller's own RLS-scoped Supabase client
- * (ctx.supabase, built from their session — see /api/franz/route.ts) — never
- * a service-role client. A staff member can only ever get back what RLS
- * would already let them see by clicking around the app themselves; nothing
- * here is a second, less-audited path to the data.
- */
-
-async function getLowStock(ctx: FranzToolContext) {
-  if (!ctx.profile.outlet_id) return { error: "Kein Standort zugeordnet." };
-
-  const { data, error } = await ctx.supabase
-    .from("inventory_items")
-    .select("name, category, current_stock, par_level, unit")
-    .eq("outlet_id", ctx.profile.outlet_id)
-    .order("name");
-
-  if (error) return { error: error.message };
-
-  const low = (data ?? [])
-    .filter((i) => i.current_stock <= i.par_level)
-    .map((i) => ({
-      name: i.name,
-      kategorie: CATEGORY_LABEL[i.category] ?? i.category,
-      bestand: `${i.current_stock} ${i.unit}`,
-      soll: `${i.par_level} ${i.unit}`,
-    }));
-
-  return { anzahl_unter_soll: low.length, artikel: low };
-}
-
-async function getOpenTasks(ctx: FranzToolContext) {
-  let query = ctx.supabase
-    .from("tasks")
-    .select("title, status, due_date, assigned_to")
-    .neq("status", "done")
-    .order("due_date", { ascending: true, nullsFirst: false });
-
-  if (ctx.profile.outlet_id) query = query.eq("outlet_id", ctx.profile.outlet_id);
-
-  const { data, error } = await query;
-  if (error) return { error: error.message };
-
-  return {
-    anzahl_offen: data?.length ?? 0,
-    aufgaben: (data ?? []).map((t) => ({
-      titel: t.title,
-      status: t.status === "in_progress" ? "in Arbeit" : "offen",
-      faellig: t.due_date,
-    })),
-  };
-}
-
-async function getChecklistStatus(ctx: FranzToolContext) {
-  if (!ctx.profile.outlet_id) return { error: "Kein Standort zugeordnet." };
-
-  const { data: templates, error } = await ctx.supabase
-    .from("checklist_templates")
-    .select("id, name")
-    .eq("outlet_id", ctx.profile.outlet_id);
-
-  if (error) return { error: error.message };
-
-  const result: Record<string, string> = {};
-  for (const type of CHECKLIST_TYPES) {
-    const template = templates?.find((t) => t.name === type);
-    if (!template) {
-      result[CHECKLIST_LABEL[type]] = "keine Vorlage angelegt";
-      continue;
-    }
-
-    const periodStart = periodStartFor(type);
-    // Staff only ever gets their own rows back here (RLS); owner/manager
-    // see every submission in the outlet for this period — same boundary
-    // as the Checklisten page itself, not a Franz-specific rule.
-    const { data: submissions } = await ctx.supabase
-      .from("checklist_submissions")
-      .select("status")
-      .eq("template_id", template.id)
-      .eq("period_start", periodStart);
-
-    if (!submissions || submissions.length === 0) {
-      result[CHECKLIST_LABEL[type]] = "noch nicht begonnen";
-    } else if (submissions.some((s) => s.status === "approved")) {
-      result[CHECKLIST_LABEL[type]] = "freigegeben";
-    } else if (submissions.some((s) => s.status === "submitted")) {
-      result[CHECKLIST_LABEL[type]] = "eingereicht, wartet auf Freigabe";
-    } else {
-      result[CHECKLIST_LABEL[type]] = "als Entwurf begonnen, noch nicht eingereicht";
-    }
-  }
-
-  return result;
-}
-
-async function getOpenOrders(ctx: FranzToolContext) {
-  if (!ctx.profile.outlet_id) return { error: "Kein Standort zugeordnet." };
-
-  const { data, error } = await ctx.supabase
-    .from("order_list_items")
-    .select("item_name, quantity, supplier_name, notes")
-    .eq("outlet_id", ctx.profile.outlet_id)
-    .eq("status", "open")
-    .order("created_at", { ascending: false });
-
-  if (error) return { error: error.message };
-
-  return {
-    anzahl_offen: data?.length ?? 0,
-    eintraege: (data ?? []).map((o) => ({
-      artikel: o.item_name,
-      menge: o.quantity,
-      lieferant: o.supplier_name,
-      notiz: o.notes,
-    })),
-  };
-}
-
-async function getUpcomingEvents(ctx: FranzToolContext) {
-  if (!ctx.profile.outlet_id) return { error: "Kein Standort zugeordnet." };
-
-  const today = new Date().toISOString().slice(0, 10);
-  const in14Days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-  const { data, error } = await ctx.supabase
-    .from("events")
-    .select("label, event_date")
-    .eq("outlet_id", ctx.profile.outlet_id)
-    .gte("event_date", today)
-    .lte("event_date", in14Days)
-    .order("event_date", { ascending: true });
-
-  if (error) return { error: error.message };
-
-  return { termine: (data ?? []).map((e) => ({ titel: e.label, datum: e.event_date })) };
-}
-
-async function getRecipeCost(ctx: FranzToolContext, input: { menu_item_name: string }) {
-  const { data: menuItem, error: menuError } = await ctx.supabase
-    .from("menu_items")
-    .select("id, name, sale_price")
-    .ilike("name", `%${input.menu_item_name}%`)
-    .limit(1)
-    .maybeSingle();
-
-  if (menuError) return { error: menuError.message };
-  if (!menuItem) return { error: `Kein Menüpunkt gefunden, der zu "${input.menu_item_name}" passt.` };
-
-  const { data: recipes, error: recipeError } = await ctx.supabase
-    .from("recipes")
-    .select("amount, inventory_items(name, unit_volume_ml, purchase_price)")
-    .eq("menu_item_id", menuItem.id);
-
-  if (recipeError) return { error: recipeError.message };
-
-  const cost = (recipes ?? []).reduce(
-    (sum, r) => sum + recipeLineCost(r.amount, r.inventory_items as unknown as { unit_volume_ml: number | null; purchase_price: number | null } | null),
-    0,
-  );
-  const margin = menuItem.sale_price - cost;
-
-  return {
-    menuepunkt: menuItem.name,
-    verkaufspreis: menuItem.sale_price,
-    wareneinsatz: Math.round(cost * 100) / 100,
-    marge: Math.round(margin * 100) / 100,
-  };
-}
-
-async function searchHandbook(ctx: FranzToolContext, input: { query: string }) {
-  if (!ctx.profile.outlet_id) return { error: "Kein Standort zugeordnet." };
-
-  // Two parameterized .ilike() calls merged in JS, rather than interpolating
-  // the search term into a raw .or() filter expression — PostgREST's filter
-  // DSL treats commas/parens specially, so a hand-built .or() string is a
-  // filter-injection footgun even though RLS bounds the outcome here anyway.
-  const [{ data: byTitle, error: titleError }, { data: byBody, error: bodyError }] = await Promise.all([
-    ctx.supabase
-      .from("handbook_sections")
-      .select("title, body, category")
-      .eq("outlet_id", ctx.profile.outlet_id)
-      .ilike("title", `%${input.query}%`)
-      .limit(3),
-    ctx.supabase
-      .from("handbook_sections")
-      .select("title, body, category")
-      .eq("outlet_id", ctx.profile.outlet_id)
-      .ilike("body", `%${input.query}%`)
-      .limit(3),
-  ]);
-
-  if (titleError) return { error: titleError.message };
-  if (bodyError) return { error: bodyError.message };
-
-  const seen = new Set<string>();
-  const merged = [...(byTitle ?? []), ...(byBody ?? [])].filter((s) => {
-    if (seen.has(s.title)) return false;
-    seen.add(s.title);
-    return true;
-  });
-
-  if (merged.length === 0) return { treffer: [], hinweis: "Nichts im Handbuch gefunden." };
-
-  return { treffer: merged.slice(0, 3).map((s) => ({ titel: s.title, kategorie: s.category, inhalt: s.body })) };
-}
+// Franz only ever reads — every query below runs through the caller's own
+// authenticated Supabase client, so RLS (outlet scoping, role visibility)
+// applies exactly as it would if the user browsed the page themselves. No
+// tool here writes, and none should be added without also re-checking the
+// permission story in the system prompt.
 
 const BASE_TOOLS: Anthropic.Tool[] = [
   {
-    name: "get_low_stock",
-    description: "Zeigt Inventar-Artikel, deren aktueller Bestand unter dem Sollbestand (par level) liegt.",
-    input_schema: { type: "object", properties: {}, additionalProperties: false },
+    name: "get_inventory_status",
+    description:
+      "Zeigt den aktuellen Lagerbestand von Artikeln im Inventar, verglichen mit dem Sollbestand (Einheit, Bestand, Soll). Optional nach Kategorie filtern oder nur Artikel unter Sollbestand anzeigen.",
+    input_schema: {
+      type: "object",
+      properties: {
+        category: {
+          type: "string",
+          description:
+            "Optionaler Filter: spirits, beer, wine, mixer, garnish, herbs_produce, juice, liqueur, schnapps, syrup, bitters, consumable",
+        },
+        low_stock_only: {
+          type: "boolean",
+          description: "Nur Artikel anzeigen, deren Bestand unter dem Sollbestand liegt",
+        },
+      },
+    },
   },
   {
-    name: "get_open_tasks",
-    description: "Zeigt offene und in Arbeit befindliche Aufgaben (Aufgaben-Liste).",
-    input_schema: { type: "object", properties: {}, additionalProperties: false },
+    name: "get_wine_info",
+    description:
+      "Sucht einen Wein im Inventar (Kategorie Wein) nach Namen und gibt Weinart, Bestand und die hinterlegte Beschreibung (Geschichte, Rebsorte/Region, Speisenempfehlung) zurück.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Name oder Teil des Namens des Weins" },
+      },
+      required: ["name"],
+    },
   },
   {
     name: "get_checklist_status",
     description:
-      "Zeigt den Status der Opening-, Closing-, Wochen- und Monatscheckliste für die laufende Periode (nicht begonnen / Entwurf / eingereicht / freigegeben).",
-    input_schema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "get_open_orders",
-    description: "Zeigt offene Einträge in der Bestellliste (was noch besorgt werden muss).",
-    input_schema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "get_upcoming_events",
-    description: "Zeigt anstehende Termine (Events) der nächsten 14 Tage.",
-    input_schema: { type: "object", properties: {}, additionalProperties: false },
+      "Zeigt den Status der eigenen aktuellen Checkliste (Opening, Closing, Wochencheck oder Monatscheck) — wie viele Punkte bereits erledigt sind und ob der Bericht schon eingereicht wurde.",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: {
+          type: "string",
+          enum: ["opening", "closing", "weekly", "monthly"],
+          description: "Welche Checkliste",
+        },
+      },
+      required: ["type"],
+    },
   },
   {
     name: "search_handbook",
-    description: "Durchsucht das Handbuch (Hausregeln, Anleitungen) nach einem Stichwort.",
+    description:
+      "Durchsucht das Handbuch (Anleitungen, Rezepte, Hausregeln) nach einem Stichwort im Titel oder Text.",
     input_schema: {
       type: "object",
-      properties: { query: { type: "string", description: "Suchbegriff, z.B. 'Kasse' oder 'Notfall'." } },
+      properties: {
+        query: { type: "string", description: "Suchbegriff" },
+      },
       required: ["query"],
-      additionalProperties: false,
     },
   },
 ];
 
 // Cost/margin data is owner/manager only — gated by not even offering the
-// tool to staff, the same boundary Menü & Rezepte already draws in the UI.
-// This mirrors canManageMasterData rather than inventing a Franz-specific rule.
+// tool to staff, same boundary Menü & Rezepte already draws in the UI
+// (canManageMasterData), rather than a Franz-specific permission system.
 const MANAGER_ONLY_TOOLS: Anthropic.Tool[] = [
   {
-    name: "get_recipe_cost",
-    description: "Berechnet Wareneinsatz und Marge eines Menüpunkts anhand seines Rezepts.",
+    name: "get_menu_item_cost",
+    description:
+      "Sucht einen Cocktail/Menüpunkt nach Namen und gibt Verkaufspreis, Zutatenkosten und Marge zurück.",
     input_schema: {
       type: "object",
-      properties: { menu_item_name: { type: "string", description: "Name des Menüpunkts (Teilstring reicht)." } },
-      required: ["menu_item_name"],
-      additionalProperties: false,
+      properties: {
+        name: { type: "string", description: "Name oder Teil des Namens des Menüpunkts" },
+      },
+      required: ["name"],
     },
   },
 ];
@@ -293,29 +96,165 @@ export function toolsForRole(profile: Profile): Anthropic.Tool[] {
   return canManageMasterData(profile.role) ? [...BASE_TOOLS, ...MANAGER_ONLY_TOOLS] : BASE_TOOLS;
 }
 
-export async function runFranzTool(name: string, input: Record<string, unknown>, ctx: FranzToolContext): Promise<string> {
+type Supabase = SupabaseClient<Database>;
+
+export async function runFranzTool(supabase: Supabase, profile: Profile, name: string, input: unknown): Promise<string> {
+  const args = (input ?? {}) as Record<string, unknown>;
   // Defense in depth: even if a manager-only tool name somehow reached this
   // dispatcher, refuse it here too rather than trusting the tool list alone.
-  if (MANAGER_ONLY_TOOLS.some((t) => t.name === name) && !canManageMasterData(ctx.profile.role)) {
-    return JSON.stringify({ error: "Dafür fehlt dir die Berechtigung." });
+  if (MANAGER_ONLY_TOOLS.some((t) => t.name === name) && !canManageMasterData(profile.role)) {
+    return "Dafür fehlt dir die Berechtigung.";
   }
 
   switch (name) {
-    case "get_low_stock":
-      return JSON.stringify(await getLowStock(ctx));
-    case "get_open_tasks":
-      return JSON.stringify(await getOpenTasks(ctx));
+    case "get_inventory_status":
+      return getInventoryStatus(supabase, args);
+    case "get_menu_item_cost":
+      return getMenuItemCost(supabase, args);
+    case "get_wine_info":
+      return getWineInfo(supabase, args);
     case "get_checklist_status":
-      return JSON.stringify(await getChecklistStatus(ctx));
-    case "get_open_orders":
-      return JSON.stringify(await getOpenOrders(ctx));
-    case "get_upcoming_events":
-      return JSON.stringify(await getUpcomingEvents(ctx));
-    case "get_recipe_cost":
-      return JSON.stringify(await getRecipeCost(ctx, input as { menu_item_name: string }));
+      return getChecklistStatus(supabase, profile, args);
     case "search_handbook":
-      return JSON.stringify(await searchHandbook(ctx, input as { query: string }));
+      return searchHandbook(supabase, args);
     default:
-      return JSON.stringify({ error: `Unbekanntes Tool: ${name}` });
+      return `Unbekanntes Tool: ${name}`;
   }
+}
+
+async function getInventoryStatus(supabase: Supabase, args: Record<string, unknown>): Promise<string> {
+  const category = typeof args.category === "string" ? args.category : undefined;
+  const lowStockOnly = args.low_stock_only === true;
+
+  let query = supabase
+    .from("inventory_items")
+    .select("name, category, unit, current_stock, par_level")
+    .order("name")
+    .limit(80);
+  if (category) query = query.eq("category", category as never);
+
+  const { data, error } = await query;
+  if (error) return `Fehler beim Lesen des Inventars: ${error.message}`;
+
+  let items = data ?? [];
+  if (lowStockOnly) items = items.filter((i) => i.current_stock < i.par_level);
+  if (items.length === 0) return "Keine passenden Artikel gefunden.";
+
+  const lines = items.map(
+    (i) =>
+      `${i.name} (${i.category}): ${i.current_stock} ${i.unit} von ${i.par_level} ${i.unit} Soll${
+        i.current_stock < i.par_level ? " — UNTER SOLLBESTAND" : ""
+      }`,
+  );
+  return lines.join("\n");
+}
+
+async function getMenuItemCost(supabase: Supabase, args: Record<string, unknown>): Promise<string> {
+  const name = typeof args.name === "string" ? args.name.trim() : "";
+  if (!name) return "Bitte einen Namen angeben.";
+
+  const { data: menuItems, error } = await supabase
+    .from("menu_items")
+    .select("id, name, sale_price")
+    .ilike("name", `%${name}%`)
+    .limit(5);
+  if (error) return `Fehler bei der Suche: ${error.message}`;
+  if (!menuItems || menuItems.length === 0) return `Kein Menüpunkt gefunden, der zu "${name}" passt.`;
+
+  const results = await Promise.all(
+    menuItems.map(async (m) => {
+      const { data: recipes } = await supabase
+        .from("recipes")
+        .select("amount, inventory_items(unit_volume_ml, purchase_price)")
+        .eq("menu_item_id", m.id);
+      const cost = (recipes ?? []).reduce((sum, r) => {
+        const item = r.inventory_items as unknown as { unit_volume_ml: number | null; purchase_price: number | null } | null;
+        return sum + recipeLineCost(r.amount, item);
+      }, 0);
+      const margin = m.sale_price - cost;
+      const marginPct = m.sale_price > 0 ? (margin / m.sale_price) * 100 : 0;
+      return `${m.name}: Verkaufspreis ${m.sale_price.toFixed(2)} €, Zutatenkosten ${cost.toFixed(2)} €, Marge ${margin.toFixed(2)} € (${marginPct.toFixed(0)}%)`;
+    }),
+  );
+  return results.join("\n");
+}
+
+async function getWineInfo(supabase: Supabase, args: Record<string, unknown>): Promise<string> {
+  const name = typeof args.name === "string" ? args.name.trim() : "";
+  if (!name) return "Bitte einen Namen angeben.";
+
+  const { data, error } = await supabase
+    .from("inventory_items")
+    .select("name, wine_type, current_stock, unit, description")
+    .eq("category", "wine")
+    .ilike("name", `%${name}%`)
+    .limit(5);
+  if (error) return `Fehler bei der Suche: ${error.message}`;
+  if (!data || data.length === 0) return `Kein Wein gefunden, der zu "${name}" passt.`;
+
+  return data
+    .map((w) => {
+      const parts = [`${w.name} (${w.wine_type ?? "Typ unbekannt"}): ${w.current_stock} ${w.unit} auf Lager.`];
+      parts.push(w.description ? w.description : "Keine Beschreibung hinterlegt.");
+      return parts.join(" ");
+    })
+    .join("\n\n");
+}
+
+async function getChecklistStatus(supabase: Supabase, profile: Profile, args: Record<string, unknown>): Promise<string> {
+  const type = typeof args.type === "string" ? args.type : "";
+  if (!isChecklistType(type)) return "Ungültiger Checklisten-Typ.";
+  if (!profile.outlet_id) return "Kein Standort zugeordnet.";
+
+  const { data: templates } = await supabase
+    .from("checklist_templates")
+    .select("id, items")
+    .eq("outlet_id", profile.outlet_id)
+    .eq("name", type)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  const template = templates?.[0];
+  if (!template) return `Für ${CHECKLIST_LABEL[type]} ist noch keine Vorlage angelegt.`;
+
+  const periodStart = periodStartFor(type);
+  // Read-only on purpose — this tool must never create a draft submission
+  // just because someone asked Franz about it.
+  const { data: submissions } = await supabase
+    .from("checklist_submissions")
+    .select("id, status, submitted_at")
+    .eq("template_id", template.id)
+    .eq("user_id", profile.id)
+    .eq("period_start", periodStart)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  const submission = submissions?.[0];
+  const totalItems = (template.items as unknown[]).length;
+
+  if (!submission) {
+    return `${CHECKLIST_LABEL[type]}: noch nicht begonnen (${totalItems} Punkte insgesamt).`;
+  }
+
+  const { count } = await supabase
+    .from("checklist_item_results")
+    .select("id", { count: "exact", head: true })
+    .eq("submission_id", submission.id)
+    .eq("checked", true);
+
+  const statusLabel = submission.status === "draft" ? "in Bearbeitung" : submission.status === "submitted" ? "eingereicht" : "freigegeben";
+  return `${CHECKLIST_LABEL[type]}: ${count ?? 0} von ${totalItems} Punkten erledigt, Status: ${statusLabel}.`;
+}
+
+async function searchHandbook(supabase: Supabase, args: Record<string, unknown>): Promise<string> {
+  const query = typeof args.query === "string" ? args.query.trim() : "";
+  if (!query) return "Bitte einen Suchbegriff angeben.";
+
+  const { data, error } = await supabase
+    .from("handbook_sections")
+    .select("title, body, category")
+    .or(`title.ilike.%${query}%,body.ilike.%${query}%`)
+    .limit(5);
+  if (error) return `Fehler bei der Suche: ${error.message}`;
+  if (!data || data.length === 0) return `Nichts im Handbuch zu "${query}" gefunden.`;
+
+  return data.map((s) => `[${s.category}] ${s.title}\n${s.body}`).join("\n\n---\n\n");
 }

@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/auth";
 import { toolsForRole, runFranzTool } from "@/lib/franz/tools";
-import { buildSystemPrompt } from "@/lib/franz/systemPrompt";
+import type { Profile } from "@/lib/auth";
 
-export const runtime = "nodejs";
+export const maxDuration = 60;
 
-const MAX_HISTORY = 20;
-const MAX_TOOL_ITERATIONS = 6;
-const MODEL = "claude-haiku-4-5";
+// A tool-use loop iteration is a real API call, so this caps worst-case
+// latency/cost if Claude keeps calling tools instead of answering — a bug
+// in a tool's return value should not turn into an unbounded request chain.
+const MAX_ITERATIONS = 6;
+const MAX_HISTORY_MESSAGES = 20;
 
-export async function POST(request: NextRequest) {
+// Franz's persona: the bar's own old-school barkeep, not a generic
+// assistant voice — talks like a person on shift, not customer support.
+function systemPrompt(profile: Profile): string {
+  return [
+    "Du bist Franz, der digitale Kollege der Bar \"Der Dicke Franz\". Der Name kommt vom Haus selbst — du bist quasi der alte Barkeeper, der seit Ewigkeiten hier steht, jede Schicht kennt und aufpasst, dass der Laden läuft.",
+    `Angemeldet ist ${profile.name} (Rolle: ${profile.role}).`,
+    [
+      "STIL:",
+      "- Schreib wie ein Mensch spricht, nicht wie ein Assistent. Kurze, direkte Sätze.",
+      "- Kein Gedankenstrich (—) in deinen Antworten. Nutz stattdessen Punkt, Komma oder zwei Sätze.",
+      "- Keine Floskeln wie \"Als KI-Assistent\" oder \"Ich helfe gerne weiter\". Antworte einfach.",
+      "- Nutz die Begriffe, die im Haus selbst benutzt werden: Bestellung, Rundgang, Freigeben, Wochencheck, Schichtübergabe. Übersetz die nicht ins Englische oder in generisches AI-Deutsch.",
+    ].join("\n"),
+    "Du hast nur lesenden Zugriff über deine Tools — du kannst nichts in der App ändern, speichern oder abhaken. Wenn jemand dich bittet, etwas einzutragen oder zu erledigen, erkläre freundlich, dass du das (noch) nicht kannst, und sag, wo man es selbst einträgt.",
+    "Nutze die Tools für alles Faktische (Bestand, Preise, Kosten, Checklisten-Status, Handbuch) — errate niemals Zahlen oder Inhalte. Wenn ein Tool nichts findet, sag das ehrlich, statt zu spekulieren.",
+    "Antworte in der Sprache, in der die Frage gestellt wurde. Halte Antworten kurz und konkret — das Team liest das während einer Schicht, nicht in Ruhe.",
+  ].join("\n\n");
+}
+
+export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,88 +43,81 @@ export async function POST(request: NextRequest) {
     .select("id, name, role, outlet_id, email, is_active")
     .eq("id", user.id)
     .single();
-  if (!profile || !profile.is_active) return NextResponse.json({ error: "Kein Zugriff." }, { status: 403 });
-
-  const body = await request.json().catch(() => null);
-  const userMessage = typeof body?.message === "string" ? body.message.trim() : "";
-  if (!userMessage) return NextResponse.json({ error: "Nachricht fehlt." }, { status: 400 });
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "Franz ist noch nicht eingerichtet (ANTHROPIC_API_KEY fehlt)." }, { status: 503 });
+  if (!profile || !profile.is_active) {
+    return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
   }
 
-  const typedProfile = profile as Profile;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Franz ist noch nicht eingerichtet (fehlender API-Key)." }, { status: 503 });
+  }
 
-  const { error: insertError } = await supabase
-    .from("franz_messages")
-    .insert({ user_id: typedProfile.id, outlet_id: typedProfile.outlet_id, role: "user", content: userMessage });
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+  const body: unknown = await req.json().catch(() => null);
+  const rawMessages = (body as { messages?: unknown } | null)?.messages;
+  if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+    return NextResponse.json({ error: "Keine Nachricht übermittelt." }, { status: 400 });
+  }
 
-  const { data: historyRows } = await supabase
-    .from("franz_messages")
-    .select("role, content")
-    .eq("user_id", typedProfile.id)
-    .order("created_at", { ascending: false })
-    .limit(MAX_HISTORY);
+  function isFranzTurn(m: unknown): m is { role: "user" | "assistant"; content: string } {
+    const r = m as { role?: unknown; content?: unknown };
+    return (r.role === "user" || r.role === "assistant") && typeof r.content === "string" && r.content.trim().length > 0;
+  }
 
-  const messages: Anthropic.MessageParam[] = (historyRows ?? [])
-    .slice()
-    .reverse()
-    .map((m) => ({ role: m.role, content: m.content }));
+  const history = (rawMessages as unknown[]).filter(isFranzTurn).slice(-MAX_HISTORY_MESSAGES);
+
+  if (history.length === 0) {
+    return NextResponse.json({ error: "Keine gültige Nachricht übermittelt." }, { status: 400 });
+  }
 
   const client = new Anthropic();
-  const tools = toolsForRole(typedProfile);
-  const ctx = { supabase, profile: typedProfile };
-
-  let finalText = "";
+  const messages: Anthropic.MessageParam[] = history.map((m) => ({ role: m.role, content: m.content }));
 
   try {
-    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
       const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 1024,
-        system: buildSystemPrompt(typedProfile),
-        tools,
+        model: "claude-opus-5",
+        max_tokens: 2048,
+        system: systemPrompt(profile),
+        tools: toolsForRole(profile),
         messages,
       });
 
-      if (response.stop_reason === "tool_use") {
-        const toolUseBlocks = response.content.filter(
-          (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-        );
-        messages.push({ role: "assistant", content: response.content });
-
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const tool of toolUseBlocks) {
-          const result = await runFranzTool(tool.name, tool.input as Record<string, unknown>, ctx);
-          toolResults.push({ type: "tool_result", tool_use_id: tool.id, content: result });
-        }
-        messages.push({ role: "user", content: toolResults });
-        continue;
+      if (response.stop_reason !== "tool_use") {
+        const text = response.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+        return NextResponse.json({ reply: text || "…" });
       }
 
-      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
-      finalText = textBlock?.text ?? "";
-      break;
+      messages.push({ role: "assistant", content: response.content });
+
+      const toolUses = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+      const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
+        toolUses.map(async (t) => {
+          try {
+            const content = await runFranzTool(supabase, profile, t.name, t.input);
+            return { type: "tool_result" as const, tool_use_id: t.id, content };
+          } catch (err) {
+            return {
+              type: "tool_result" as const,
+              tool_use_id: t.id,
+              content: err instanceof Error ? err.message : "Unbekannter Fehler.",
+              is_error: true,
+            };
+          }
+        }),
+      );
+      messages.push({ role: "user", content: results });
     }
-  } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json({ error: "Franz-API-Schlüssel ist ungültig." }, { status: 500 });
+
+    return NextResponse.json({
+      reply: "Entschuldigung, das dauert gerade zu lange. Bitte versuch's nochmal oder frag etwas konkreter.",
+    });
+  } catch (err) {
+    console.error("Franz API error", err);
+    if (err instanceof Anthropic.AuthenticationError) {
+      return NextResponse.json({ error: "Franz ist noch nicht eingerichtet (ungültiger API-Key)." }, { status: 503 });
     }
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json({ error: "Franz ist gerade überlastet, versuch's gleich nochmal." }, { status: 429 });
+    if (err instanceof Anthropic.RateLimitError) {
+      return NextResponse.json({ error: "Franz ist gerade überlastet. Bitte kurz warten und erneut versuchen." }, { status: 429 });
     }
-    if (error instanceof Anthropic.APIError) {
-      return NextResponse.json({ error: "Franz hat gerade ein Problem." }, { status: 502 });
-    }
-    throw error;
+    return NextResponse.json({ error: "Franz hat gerade ein Problem. Bitte später erneut versuchen." }, { status: 500 });
   }
-
-  if (!finalText) finalText = "Sorry, da ist gerade was schiefgelaufen. Versuch's nochmal.";
-
-  await supabase
-    .from("franz_messages")
-    .insert({ user_id: typedProfile.id, outlet_id: typedProfile.outlet_id, role: "assistant", content: finalText });
-
-  return NextResponse.json({ reply: finalText });
 }
