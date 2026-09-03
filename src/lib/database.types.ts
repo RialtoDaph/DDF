@@ -373,8 +373,16 @@ export interface Database {
         }
       >;
       chat_messages: Table<
-        { id: string; outlet_id: string; user_id: string; content: string; created_at: string },
-        { id?: string; outlet_id: string; user_id: string; content: string }
+        { id: string; channel_id: string; user_id: string; content: string; created_at: string },
+        { id?: string; channel_id: string; user_id: string; content: string }
+      >;
+      chat_channels: Table<
+        { id: string; name: string; kind: string; outlet_id: string | null; created_by: string | null; created_at: string },
+        { id?: string; name: string; kind: string; outlet_id?: string | null; created_by?: string | null }
+      >;
+      chat_channel_members: Table<
+        { channel_id: string; user_id: string; added_at: string },
+        { channel_id: string; user_id: string }
       >;
       events: Table<
         { id: string; outlet_id: string; label: string; event_date: string; created_by: string | null; created_at: string },

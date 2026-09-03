@@ -15,6 +15,7 @@ import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
 import { TeamChatNavLink } from "@/components/chat/TeamChatNavLink";
 import { FranzAssistant } from "@/components/franz/FranzAssistant";
+import type { ChatChannel, ChatActivity } from "@/lib/chat";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -22,25 +23,19 @@ const ROLE_LABEL: Record<string, string> = {
   staff: "Mitarbeiter",
 };
 
-interface ChatMessage {
-  id: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  user_name: string;
-}
-
 export function AppShell({
   profile,
   notifications,
   searchIndex,
-  chatMessages,
+  chatChannels,
+  chatActivity,
   children,
 }: {
   profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   notifications: Notification[];
   searchIndex: SearchEntry[];
-  chatMessages: ChatMessage[];
+  chatChannels: ChatChannel[];
+  chatActivity: ChatActivity[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -62,7 +57,13 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden min-[900px]:flex min-[900px]:w-60 min-[900px]:flex-col border-r border-ink-border bg-ink-raised">
-        <SidebarContent navGroups={navGroups} profile={profile} pathname={pathname} chatMessages={chatMessages} />
+        <SidebarContent
+          navGroups={navGroups}
+          profile={profile}
+          pathname={pathname}
+          chatChannels={chatChannels}
+          chatActivity={chatActivity}
+        />
       </aside>
 
       <div className="flex flex-1 flex-col min-w-0">
@@ -98,7 +99,8 @@ export function AppShell({
                 navGroups={navGroups}
                 profile={profile}
                 pathname={pathname}
-                chatMessages={chatMessages}
+                chatChannels={chatChannels}
+                chatActivity={chatActivity}
                 onNavigate={() => setOpen(false)}
               />
             </div>
@@ -125,13 +127,15 @@ function SidebarContent({
   navGroups,
   profile,
   pathname,
-  chatMessages,
+  chatChannels,
+  chatActivity,
   onNavigate,
 }: {
   navGroups: NavGroup[];
   profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   pathname: string;
-  chatMessages: ChatMessage[];
+  chatChannels: ChatChannel[];
+  chatActivity: ChatActivity[];
   onNavigate?: () => void;
 }) {
   return (
@@ -178,12 +182,12 @@ function SidebarContent({
         ))}
       </nav>
 
-      {profile.outlet_id && (
+      {chatChannels.length > 0 && (
         <div className="border-t border-ink-border px-2 py-2">
           <TeamChatNavLink
-            outletId={profile.outlet_id}
+            channels={chatChannels}
+            recentActivity={chatActivity}
             currentUserId={profile.id}
-            initialMessages={chatMessages}
             active={pathname === "/chat"}
             onNavigate={onNavigate}
           />

@@ -3,22 +3,24 @@ import { AppShell } from "@/components/nav/AppShell";
 import { createClient } from "@/lib/supabase/server";
 import { getNotifications } from "@/lib/notifications";
 import { getSearchIndex } from "@/lib/search";
-import { getRecentChatMessages } from "@/lib/chat";
+import { getChatChannels, getRecentChatActivity } from "@/lib/chat";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  // Only used to seed the sidebar's unread badge — the full history loads
-  // separately on /chat.
-  const [notifications, searchIndex, chatMessages] = await Promise.all([
+  const [notifications, searchIndex, chatChannels] = await Promise.all([
     getNotifications(supabase, profile),
     getSearchIndex(supabase, profile),
-    getRecentChatMessages(supabase, profile.outlet_id, 50),
+    getChatChannels(supabase),
   ]);
 
+  // Only used to seed the sidebar's unread badge — the full history loads
+  // separately on /chat.
+  const chatActivity = await getRecentChatActivity(supabase, chatChannels.map((c) => c.id));
+
   return (
-    <AppShell profile={profile} notifications={notifications} searchIndex={searchIndex} chatMessages={chatMessages}>
+    <AppShell profile={profile} notifications={notifications} searchIndex={searchIndex} chatChannels={chatChannels} chatActivity={chatActivity}>
       {children}
     </AppShell>
   );

@@ -1,39 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { ChatChannel, ChatActivity } from "@/lib/chat";
 
-interface UnreadSourceMessage {
-  id: string;
-  created_at: string;
-  user_id: string;
+const lastSeenKey = (channelId: string) => `ddf-chat-lastseen-${channelId}`;
+
+function countUnread(channels: ChatChannel[], activity: ChatActivity[], currentUserId: string) {
+  if (typeof window === "undefined") return 0;
+  let total = 0;
+  for (const channel of channels) {
+    const lastSeen = localStorage.getItem(lastSeenKey(channel.id));
+    if (!lastSeen) continue;
+    total += activity.filter(
+      (m) => m.channel_id === channel.id && m.user_id !== currentUserId && m.created_at > lastSeen,
+    ).length;
+  }
+  return total;
 }
 
-const lastSeenKey = (outletId: string) => `ddf-chat-lastseen-${outletId}`;
-
 export function TeamChatNavLink({
-  outletId,
+  channels,
+  recentActivity,
   currentUserId,
-  initialMessages,
   active,
   onNavigate,
 }: {
-  outletId: string;
+  channels: ChatChannel[];
+  recentActivity: ChatActivity[];
   currentUserId: string;
-  initialMessages: UnreadSourceMessage[];
   active: boolean;
   onNavigate?: () => void;
 }) {
-  const [unread, setUnread] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    const lastSeen = localStorage.getItem(lastSeenKey(outletId));
-    if (!lastSeen) return 0;
-    return initialMessages.filter((m) => m.user_id !== currentUserId && m.created_at > lastSeen).length;
-  });
+  const [unread, setUnread] = useState(() => countUnread(channels, recentActivity, currentUserId));
   const [supabase] = useState(() => createClient());
+  const channelsRef = useRef(channels);
+
+  useEffect(() => {
+    channelsRef.current = channels;
+  }, [channels]);
 
   // The sidebar persists across navigation, so this link's own state doesn't
   // remount when /chat becomes the active route — reset the badge the
@@ -48,13 +56,15 @@ export function TeamChatNavLink({
 
   useEffect(() => {
     const channel = supabase
-      .channel(`chat-badge:${outletId}`)
+      .channel(`chat-badge:${currentUserId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages", filter: `outlet_id=eq.${outletId}` },
+        { event: "INSERT", schema: "public", table: "chat_messages" },
         (payload) => {
-          const row = payload.new as { user_id: string };
-          if (row.user_id !== currentUserId) setUnread((u) => u + 1);
+          const row = payload.new as { channel_id: string; user_id: string };
+          if (row.user_id !== currentUserId && channelsRef.current.some((c) => c.id === row.channel_id)) {
+            setUnread((u) => u + 1);
+          }
         },
       )
       .subscribe();
@@ -63,14 +73,16 @@ export function TeamChatNavLink({
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outletId]);
+  }, [currentUserId]);
 
   // Marking "seen" in localStorage is a write to an external system, so it
   // belongs in an effect (unlike the badge reset above, which is React
   // state and handled during render instead).
   useEffect(() => {
-    if (active) localStorage.setItem(lastSeenKey(outletId), new Date().toISOString());
-  }, [active, outletId]);
+    if (!active) return;
+    const now = new Date().toISOString();
+    channels.forEach((c) => localStorage.setItem(lastSeenKey(c.id), now));
+  }, [active, channels]);
 
   return (
     <Link

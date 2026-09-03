@@ -19,6 +19,8 @@ const ACTION_LABEL: Record<string, string> = {
   supplier_create: "Lieferant angelegt",
   supplier_update: "Lieferant geändert",
   supplier_price_add: "Lieferantenpreis erfasst",
+  chat_channel_create: "Chat-Kanal angelegt",
+  chat_channel_delete: "Chat-Kanal gelöscht",
 };
 
 export default async function AuditLogPage() {
