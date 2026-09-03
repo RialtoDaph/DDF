@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Sparkles, X, Send } from "lucide-react";
+import { X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/brand/Logo";
 
 interface FranzMessage {
   role: "user" | "assistant";
@@ -56,7 +57,7 @@ export function FranzAssistant() {
         aria-label="Franz oeffnen"
         className="fixed bottom-5 right-5 z-50 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-wine-deep shadow-[0_8px_20px_rgba(0,0,0,0.4)] hover:bg-wine-soft transition-colors"
       >
-        <Sparkles size={22} className="text-parchment" />
+        <LogoMark className="h-8 w-8" />
       </button>
 
       {open && (

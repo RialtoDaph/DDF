@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { Profile } from "@/lib/auth";
+import { canManageMasterData } from "@/lib/auth";
 import { recipeLineCost } from "@/lib/recipeCost";
 import { periodStartFor, isChecklistType, CHECKLIST_LABEL } from "@/app/(app)/checklists/shared/lib";
 
@@ -11,7 +12,7 @@ import { periodStartFor, isChecklistType, CHECKLIST_LABEL } from "@/app/(app)/ch
 // tool here writes, and none should be added without also re-checking the
 // permission story in the system prompt.
 
-export const FRANZ_TOOLS: Anthropic.Tool[] = [
+const BASE_TOOLS: Anthropic.Tool[] = [
   {
     name: "get_inventory_status",
     description:
@@ -29,18 +30,6 @@ export const FRANZ_TOOLS: Anthropic.Tool[] = [
           description: "Nur Artikel anzeigen, deren Bestand unter dem Sollbestand liegt",
         },
       },
-    },
-  },
-  {
-    name: "get_menu_item_cost",
-    description:
-      "Sucht einen Cocktail/Menüpunkt nach Namen und gibt Verkaufspreis, Zutatenkosten und Marge zurück.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Name oder Teil des Namens des Menüpunkts" },
-      },
-      required: ["name"],
     },
   },
   {
@@ -85,10 +74,38 @@ export const FRANZ_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// Cost/margin data is owner/manager only — gated by not even offering the
+// tool to staff, same boundary Menü & Rezepte already draws in the UI
+// (canManageMasterData), rather than a Franz-specific permission system.
+const MANAGER_ONLY_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "get_menu_item_cost",
+    description:
+      "Sucht einen Cocktail/Menüpunkt nach Namen und gibt Verkaufspreis, Zutatenkosten und Marge zurück.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Name oder Teil des Namens des Menüpunkts" },
+      },
+      required: ["name"],
+    },
+  },
+];
+
+export function toolsForRole(profile: Profile): Anthropic.Tool[] {
+  return canManageMasterData(profile.role) ? [...BASE_TOOLS, ...MANAGER_ONLY_TOOLS] : BASE_TOOLS;
+}
+
 type Supabase = SupabaseClient<Database>;
 
 export async function runFranzTool(supabase: Supabase, profile: Profile, name: string, input: unknown): Promise<string> {
   const args = (input ?? {}) as Record<string, unknown>;
+  // Defense in depth: even if a manager-only tool name somehow reached this
+  // dispatcher, refuse it here too rather than trusting the tool list alone.
+  if (MANAGER_ONLY_TOOLS.some((t) => t.name === name) && !canManageMasterData(profile.role)) {
+    return "Dafür fehlt dir die Berechtigung.";
+  }
+
   switch (name) {
     case "get_inventory_status":
       return getInventoryStatus(supabase, args);

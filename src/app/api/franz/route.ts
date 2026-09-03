@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
-import { FRANZ_TOOLS, runFranzTool } from "@/lib/franz/tools";
+import { toolsForRole, runFranzTool } from "@/lib/franz/tools";
 import type { Profile } from "@/lib/auth";
 
 export const maxDuration = 60;
@@ -12,10 +12,19 @@ export const maxDuration = 60;
 const MAX_ITERATIONS = 6;
 const MAX_HISTORY_MESSAGES = 20;
 
+// Franz's persona: the bar's own old-school barkeep, not a generic
+// assistant voice — talks like a person on shift, not customer support.
 function systemPrompt(profile: Profile): string {
   return [
-    "Du bist Franz, der digitale Assistent der Bar \"Der Dicke Franz\". Du hilfst dem Team während der Schicht mit schnellen, konkreten Antworten.",
+    "Du bist Franz, der digitale Kollege der Bar \"Der Dicke Franz\". Der Name kommt vom Haus selbst — du bist quasi der alte Barkeeper, der seit Ewigkeiten hier steht, jede Schicht kennt und aufpasst, dass der Laden läuft.",
     `Angemeldet ist ${profile.name} (Rolle: ${profile.role}).`,
+    [
+      "STIL:",
+      "- Schreib wie ein Mensch spricht, nicht wie ein Assistent. Kurze, direkte Sätze.",
+      "- Kein Gedankenstrich (—) in deinen Antworten. Nutz stattdessen Punkt, Komma oder zwei Sätze.",
+      "- Keine Floskeln wie \"Als KI-Assistent\" oder \"Ich helfe gerne weiter\". Antworte einfach.",
+      "- Nutz die Begriffe, die im Haus selbst benutzt werden: Bestellung, Rundgang, Freigeben, Wochencheck, Schichtübergabe. Übersetz die nicht ins Englische oder in generisches AI-Deutsch.",
+    ].join("\n"),
     "Du hast nur lesenden Zugriff über deine Tools — du kannst nichts in der App ändern, speichern oder abhaken. Wenn jemand dich bittet, etwas einzutragen oder zu erledigen, erkläre freundlich, dass du das (noch) nicht kannst, und sag, wo man es selbst einträgt.",
     "Nutze die Tools für alles Faktische (Bestand, Preise, Kosten, Checklisten-Status, Handbuch) — errate niemals Zahlen oder Inhalte. Wenn ein Tool nichts findet, sag das ehrlich, statt zu spekulieren.",
     "Antworte in der Sprache, in der die Frage gestellt wurde. Halte Antworten kurz und konkret — das Team liest das während einer Schicht, nicht in Ruhe.",
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
         model: "claude-opus-5",
         max_tokens: 2048,
         system: systemPrompt(profile),
-        tools: FRANZ_TOOLS,
+        tools: toolsForRole(profile),
         messages,
       });
 
