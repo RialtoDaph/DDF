@@ -14,6 +14,7 @@ import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { FranzChat } from "@/components/franz/FranzChat";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Owner",
@@ -29,17 +30,26 @@ interface ChatMessage {
   user_name: string;
 }
 
+interface FranzMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 export function AppShell({
   profile,
   notifications,
   searchIndex,
   chatMessages,
+  franzMessages,
   children,
 }: {
   profile: { id: string; name: string; role: UserRole; email: string; outlet_id: string | null };
   notifications: Notification[];
   searchIndex: SearchEntry[];
   chatMessages: ChatMessage[];
+  franzMessages: FranzMessage[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -122,6 +132,7 @@ export function AppShell({
           initialMessages={chatMessages}
         />
       )}
+      <FranzChat initialMessages={franzMessages} />
     </div>
   );
 }

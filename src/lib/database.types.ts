@@ -424,6 +424,23 @@ export interface Database {
           sort_order?: number;
         }
       >;
+      franz_messages: Table<
+        {
+          id: string;
+          user_id: string;
+          outlet_id: string | null;
+          role: "user" | "assistant";
+          content: string;
+          created_at: string;
+        },
+        {
+          id?: string;
+          user_id: string;
+          outlet_id?: string | null;
+          role: "user" | "assistant";
+          content: string;
+        }
+      >;
       wine_slots: Table<
         {
           id: string;

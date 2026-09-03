@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const [notifications, searchIndex, chatMessages] = await Promise.all([
+  const [notifications, searchIndex, chatMessages, franzMessages] = await Promise.all([
     getNotifications(supabase, profile),
     getSearchIndex(supabase, profile),
     profile.outlet_id
@@ -32,10 +32,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               .reverse(),
           )
       : Promise.resolve([]),
+    // Franz's history is private to this user (see franz_messages RLS) —
+    // no outlet_id gate needed, unlike the shared team chat above.
+    supabase
+      .from("franz_messages")
+      .select("id, role, content, created_at")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .then(({ data }) => (data ?? []).slice().reverse()),
   ]);
 
   return (
-    <AppShell profile={profile} notifications={notifications} searchIndex={searchIndex} chatMessages={chatMessages}>
+    <AppShell
+      profile={profile}
+      notifications={notifications}
+      searchIndex={searchIndex}
+      chatMessages={chatMessages}
+      franzMessages={franzMessages}
+    >
       {children}
     </AppShell>
   );
