@@ -13,7 +13,7 @@ import { signOut } from "@/app/auth/actions";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { NotificationBell } from "./NotificationBell";
 import { GlobalSearch } from "./GlobalSearch";
-import { SidebarTeamChat } from "@/components/chat/SidebarTeamChat";
+import { TeamChatNavLink } from "@/components/chat/TeamChatNavLink";
 import { FranzAssistant } from "@/components/franz/FranzAssistant";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -179,12 +179,15 @@ function SidebarContent({
       </nav>
 
       {profile.outlet_id && (
-        <SidebarTeamChat
-          outletId={profile.outlet_id}
-          currentUserId={profile.id}
-          currentUserName={profile.name}
-          initialMessages={chatMessages}
-        />
+        <div className="border-t border-ink-border px-2 py-2">
+          <TeamChatNavLink
+            outletId={profile.outlet_id}
+            currentUserId={profile.id}
+            initialMessages={chatMessages}
+            active={pathname === "/chat"}
+            onNavigate={onNavigate}
+          />
+        </div>
       )}
 
       <div className="border-t border-ink-border px-3 py-3">
