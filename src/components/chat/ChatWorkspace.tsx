@@ -190,7 +190,7 @@ export function ChatWorkspace({
   }
 
   return (
-    <div className="flex h-[75vh] max-w-4xl mx-auto rounded-2xl border border-ink-border bg-ink-raised overflow-hidden">
+    <div className="flex flex-1 min-h-0 w-full max-w-4xl mx-auto rounded-2xl border border-ink-border bg-ink-raised overflow-hidden">
       <aside className="w-56 shrink-0 border-r border-ink-border flex flex-col">
         <div className="flex items-center justify-between px-4 py-4 border-b border-ink-border">
           <h1 className="font-serif text-lg text-parchment">Team-Chat</h1>

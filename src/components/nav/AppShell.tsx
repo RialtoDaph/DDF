@@ -115,7 +115,7 @@ export function AppShell({
           </div>
         </div>
 
-        <main className="flex-1 min-w-0 p-4 min-[900px]:px-8 min-[900px]:pb-8 min-[900px]:pt-2 max-w-6xl w-full mx-auto">{children}</main>
+        <main className="flex flex-1 min-h-0 flex-col min-w-0 p-4 min-[900px]:px-8 min-[900px]:pb-8 min-[900px]:pt-2 max-w-6xl w-full mx-auto">{children}</main>
       </div>
 
       <FranzAssistant />
