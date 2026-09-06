@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, canManageMasterData } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import type { ActionState } from "@/lib/actionState";
 import type { ChecklistTemplateItem } from "@/lib/database.types";
 
@@ -16,11 +17,15 @@ export async function createEvent(_prevState: ActionState, formData: FormData): 
   if (!label || !eventDate) return { error: "Bitte Bezeichnung und Datum angeben." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("events")
-    .insert({ outlet_id: profile.outlet_id, label, event_date: eventDate, created_by: profile.id });
+    .insert({ outlet_id: profile.outlet_id, label, event_date: eventDate, created_by: profile.id })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  await logAudit(supabase, profile.id, "event_create", "events", { event_id: data.id, label, event_date: eventDate });
 
   revalidatePath("/settings/checklists");
   revalidatePath("/dashboard");
@@ -34,6 +39,8 @@ export async function deleteEvent(eventId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("events").delete().eq("id", eventId);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, profile.id, "event_delete", "events", { event_id: eventId });
 
   revalidatePath("/settings/checklists");
   revalidatePath("/dashboard");
@@ -68,6 +75,11 @@ export async function addTemplateItem(_prevState: unknown, formData: FormData) {
 
   if (error) return { error: error.message };
 
+  await logAudit(supabase, profile.id, "checklist_template_item_add", "checklist_templates", {
+    template_id: templateId,
+    text: newItem.text,
+  });
+
   // Staff fill the checklist out on /checklists/[type], not here — without
   // this a newly added item only appears in Settings until something else
   // happens to revalidate that route, so it looks like the add did nothing.
@@ -88,9 +100,15 @@ export async function removeTemplateItem(templateId: string, index: number) {
     .single();
   if (!template) return { error: "Vorlage nicht gefunden." };
 
+  const removedText = ((template.items as ChecklistTemplateItem[]) ?? [])[index]?.text;
   const items = ((template.items as ChecklistTemplateItem[]) ?? []).filter((_, i) => i !== index);
   const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, profile.id, "checklist_template_item_remove", "checklist_templates", {
+    template_id: templateId,
+    text: removedText,
+  });
 
   revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");
@@ -123,6 +141,11 @@ export async function updateTemplateItem(_prevState: unknown, formData: FormData
 
   const { error } = await supabase.from("checklist_templates").update({ items }).eq("id", templateId);
   if (error) return { error: error.message };
+
+  await logAudit(supabase, profile.id, "checklist_template_item_update", "checklist_templates", {
+    template_id: templateId,
+    text: items[index].text,
+  });
 
   revalidatePath(`/checklists/${template.name}`);
   revalidatePath("/settings/checklists");

@@ -29,10 +29,22 @@ export async function updateUserProfile(_prevState: unknown, formData: FormData)
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("users").update({ role, outlet_id, is_active }).eq("id", id);
+  const { data, error } = await supabase
+    .from("users")
+    .update({ role, outlet_id, is_active })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return { error: error.message };
+  }
+  // RLS can silently match zero rows (a manager targeting an outlet/role it
+  // can't touch) instead of failing loudly — without this check the form
+  // looks like it saved and the audit log would claim a change that never
+  // happened.
+  if (!data) {
+    return { error: "Nicht gefunden oder keine Berechtigung fuer diese Aenderung." };
   }
 
   await logAudit(supabase, profile.id, "user_updated", "users", { user_id: id, role, outlet_id, is_active });

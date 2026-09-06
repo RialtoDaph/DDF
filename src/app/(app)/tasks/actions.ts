@@ -88,8 +88,17 @@ export async function setTaskStatus(taskId: string, status: TaskStatus) {
     .eq("id", taskId)
     .single();
 
-  const { error } = await supabase.from("tasks").update({ status }).eq("id", taskId);
+  const { data: updated, error } = await supabase
+    .from("tasks")
+    .update({ status })
+    .eq("id", taskId)
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(error.message);
+  // RLS can silently match zero rows (not the assignee, not owner/manager)
+  // instead of failing loudly — without this the checkbox looks "saved"
+  // until the next reload shows the unchanged status.
+  if (!updated) throw new Error("Nicht gefunden oder keine Berechtigung.");
 
   // Only spawn the next occurrence on a real open -> done transition. The row
   // is a toggle in the UI, so re-checking an already-done task would otherwise

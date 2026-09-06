@@ -9,6 +9,17 @@ export function WineBottle({ slot, onSelect }: { slot: SlotData; onSelect: () =>
   const [flipped, setFlipped] = useState(slot.flipped);
   const [, startTransition] = useTransition();
 
+  // WineBottle keeps a stable key={slot.id} across re-renders (see
+  // WineRack), so it never remounts — without this, local `flipped` state
+  // would freeze at its initial value forever and never pick up another
+  // viewer's flip after a revalidation. Adjust it during render (React's
+  // documented pattern) rather than in an effect, to avoid an extra render.
+  const [prevSlot, setPrevSlot] = useState(slot);
+  if (slot !== prevSlot) {
+    setPrevSlot(slot);
+    if (slot.flipped !== prevSlot.flipped) setFlipped(slot.flipped);
+  }
+
   function handleRotate(e: React.MouseEvent) {
     e.stopPropagation();
     const prev = flipped;

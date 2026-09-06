@@ -83,21 +83,27 @@ export function ChatWorkspace({
       .eq("channel_id", selectedId)
       .order("created_at", { ascending: false })
       .limit(100)
-      .then(({ data }) => {
-        if (cancelled) return;
-        const rows = (data ?? [])
-          .map((m) => ({
-            id: m.id,
-            channel_id: m.channel_id,
-            content: m.content,
-            created_at: m.created_at,
-            user_id: m.user_id,
-            user_name: (m.users as unknown as { name: string } | null)?.name ?? "—",
-          }))
-          .reverse();
-        setMessages(rows);
-        setLoadingMessages(false);
-      });
+      .then(
+        ({ data }) => {
+          if (cancelled) return;
+          const rows = (data ?? [])
+            .map((m) => ({
+              id: m.id,
+              channel_id: m.channel_id,
+              content: m.content,
+              created_at: m.created_at,
+              user_id: m.user_id,
+              user_name: (m.users as unknown as { name: string } | null)?.name ?? "—",
+            }))
+            .reverse();
+          setMessages(rows);
+          setLoadingMessages(false);
+        },
+        () => {
+          if (cancelled) return;
+          setLoadingMessages(false);
+        },
+      );
     return () => {
       cancelled = true;
     };
@@ -164,12 +170,17 @@ export function ChatWorkspace({
     if (!content) return;
     setSending(true);
     setSendError(null);
-    const { error } = await supabase.from("chat_messages").insert({ channel_id: selectedId, user_id: currentUserId, content });
-    setSending(false);
-    if (error) {
+    try {
+      const { error } = await supabase.from("chat_messages").insert({ channel_id: selectedId, user_id: currentUserId, content });
+      if (error) {
+        setSendError("Nachricht konnte nicht gesendet werden.");
+      } else {
+        setDraft("");
+      }
+    } catch {
       setSendError("Nachricht konnte nicht gesendet werden.");
-    } else {
-      setDraft("");
+    } finally {
+      setSending(false);
     }
   }
 

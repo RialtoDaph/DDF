@@ -9,6 +9,16 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Without this, requests go through the ambient fetch that Next.js
+      // patches during a Server Component render to memoize identical GET
+      // calls for the lifetime of that render. Two PostgREST reads with the
+      // same query (e.g. a read-modify-reread pattern after losing an
+      // insert race) then silently collapse into one — the second "read"
+      // returns the first call's cached (stale) result instead of hitting
+      // Postgres again, even though the data has since changed.
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

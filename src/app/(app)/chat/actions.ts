@@ -44,8 +44,18 @@ export async function deleteChatChannel(channelId: string) {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  const { error } = await supabase.from("chat_channels").delete().eq("id", channelId).eq("kind", "custom");
+  const { data, error } = await supabase
+    .from("chat_channels")
+    .delete()
+    .eq("id", channelId)
+    .eq("kind", "custom")
+    .select("id")
+    .maybeSingle();
   if (error) return { error: error.message };
+  // RLS can silently match zero rows (not the creator, no longer a member,
+  // not an owner) instead of failing loudly — without this check the UI
+  // would claim the channel was deleted while it's still there.
+  if (!data) return { error: "Nicht gefunden oder keine Berechtigung." };
 
   await logAudit(supabase, profile.id, "chat_channel_delete", "chat_channels", { channel_id: channelId });
 

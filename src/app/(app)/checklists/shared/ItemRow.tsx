@@ -69,7 +69,7 @@ export function ItemRow({
     setCaptureOpen(false);
     setError(null);
     setChecked(true);
-    const tempId = `pending-${Date.now()}`;
+    const tempId = `pending-${crypto.randomUUID()}`;
     setPhotos((prev) => [...prev, { id: tempId, url: p.previewUrl, takenAt: p.takenAt }]);
     startTransition(async () => {
       const fd = new FormData();
@@ -90,6 +90,12 @@ export function ItemRow({
   }
 
   function handleRemovePhoto(photoId: string) {
+    // A capture still mid-upload only has a local tempId (see handleCapture)
+    // — there's no server row to delete yet, and racing the delete against
+    // the upload's own tempId->realId reconciliation can leave a phantom
+    // entry behind. The remove button is disabled for these below; this is
+    // just a defensive backstop.
+    if (photoId.startsWith("pending-")) return;
     setError(null);
     const removed = photos.find((p) => p.id === photoId);
     const wasLastPhoto = photos.length <= 1;
@@ -131,26 +137,32 @@ export function ItemRow({
 
           {photos.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {photos.map((p) => (
-                <div key={p.id} className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.url}
-                    alt={item.text}
-                    className="h-16 w-16 rounded-md border border-ink-border object-cover"
-                  />
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(p.id)}
-                      aria-label="Foto entfernen"
-                      className="absolute -top-1.5 -right-1.5 bg-ink/80 text-parchment rounded-full p-0.5 hover:bg-warn-soft hover:text-warn"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {photos.map((p) => {
+                const isUploading = p.id.startsWith("pending-");
+                return (
+                  <div key={p.id} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.url}
+                      alt={item.text}
+                      className={cn(
+                        "h-16 w-16 rounded-md border border-ink-border object-cover",
+                        isUploading && "opacity-50",
+                      )}
+                    />
+                    {!readOnly && !isUploading && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(p.id)}
+                        aria-label="Foto entfernen"
+                        className="absolute -top-1.5 -right-1.5 bg-ink/80 text-parchment rounded-full p-0.5 hover:bg-warn-soft hover:text-warn"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

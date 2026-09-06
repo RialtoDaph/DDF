@@ -24,14 +24,19 @@ export function AddVideoForm({ moduleId, onDone }: { moduleId: string; onDone?: 
     }
 
     setBusy(true);
-    const result = await attachModuleVideo(moduleId, trimmed);
-    setBusy(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    try {
+      const result = await attachModuleVideo(moduleId, trimmed);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onDone?.();
+      router.refresh();
+    } catch {
+      setError("Unbekannter Fehler.");
+    } finally {
+      setBusy(false);
     }
-    onDone?.();
-    router.refresh();
   }
 
   return (

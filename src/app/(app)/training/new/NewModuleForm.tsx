@@ -31,23 +31,28 @@ export function NewModuleForm({ menuItems }: { menuItems: { id: string; name: st
     textData.set("description", (form.elements.namedItem("description") as HTMLTextAreaElement).value);
     textData.set("menu_item_id", (form.elements.namedItem("menu_item_id") as HTMLSelectElement).value);
 
-    const result = await createModuleRecord(undefined, textData);
-    if (result.error || !result.id) {
-      setError(result.error ?? "Unbekannter Fehler.");
-      setBusy(false);
-      return;
-    }
-
-    if (trimmedVideoUrl) {
-      const attachResult = await attachModuleVideo(result.id, trimmedVideoUrl);
-      if (attachResult.error) {
-        setError(attachResult.error);
+    try {
+      const result = await createModuleRecord(undefined, textData);
+      if (result.error || !result.id) {
+        setError(result.error ?? "Unbekannter Fehler.");
         setBusy(false);
         return;
       }
-    }
 
-    router.push(`/training/${result.id}`);
+      if (trimmedVideoUrl) {
+        const attachResult = await attachModuleVideo(result.id, trimmedVideoUrl);
+        if (attachResult.error) {
+          setError(attachResult.error);
+          setBusy(false);
+          return;
+        }
+      }
+
+      router.push(`/training/${result.id}`);
+    } catch {
+      setError("Unbekannter Fehler.");
+      setBusy(false);
+    }
   }
 
   return (
