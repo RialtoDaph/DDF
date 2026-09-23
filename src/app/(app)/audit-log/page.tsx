@@ -21,6 +21,8 @@ const ACTION_LABEL: Record<string, string> = {
   supplier_price_add: "Lieferantenpreis erfasst",
   chat_channel_create: "Chat-Kanal angelegt",
   chat_channel_delete: "Chat-Kanal gelöscht",
+  tip_day_save: "Trinkgeld erfasst",
+  tip_day_delete: "Trinkgeld-Eintrag gelöscht",
 };
 
 export default async function AuditLogPage() {

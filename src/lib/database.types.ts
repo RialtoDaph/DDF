@@ -384,6 +384,32 @@ export interface Database {
         { channel_id: string; user_id: string; added_at: string },
         { channel_id: string; user_id: string }
       >;
+      tip_days: Table<
+        {
+          id: string;
+          outlet_id: string;
+          tip_date: string;
+          total_amount: number;
+          kitchen_share: number;
+          staff_share: number;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        },
+        {
+          id?: string;
+          outlet_id: string;
+          tip_date: string;
+          total_amount: number;
+          kitchen_share: number;
+          staff_share: number;
+          created_by?: string | null;
+        }
+      >;
+      tip_day_workers: Table<
+        { tip_day_id: string; user_id: string },
+        { tip_day_id: string; user_id: string }
+      >;
       events: Table<
         { id: string; outlet_id: string; label: string; event_date: string; created_by: string | null; created_at: string },
         { id?: string; outlet_id: string; label: string; event_date: string; created_by?: string | null }

@@ -13,6 +13,7 @@ import {
   Users,
   ScrollText,
   Settings,
+  Coins,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const NAV_GROUPS_ALL: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: "/checklists/opening", label: "Checklisten", icon: ClipboardCheck, roles: ["owner", "manager", "staff"] },
       { href: "/tasks", label: "Aufgaben", icon: ListChecks, roles: ["owner", "manager", "staff"] },
+      { href: "/tips", label: "Trinkgeld", icon: Coins, roles: ["owner", "manager", "staff"] },
     ],
   },
   {

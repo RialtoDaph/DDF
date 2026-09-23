@@ -63,3 +63,7 @@ export function canManageUsers(role: UserRole) {
 export function canSeeAuditLog(role: UserRole) {
   return role === "owner" || role === "manager";
 }
+
+export function canManageTips(role: UserRole) {
+  return role === "owner" || role === "manager";
+}
